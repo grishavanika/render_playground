@@ -33,7 +33,5 @@ target_include_directories(${exe_name} PUBLIC include)
 target_include_directories(${exe_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 # DX11
 target_include_directories(${exe_name} PUBLIC ${DirectX11_INCLUDE_DIRS})
-# temporary: <xnamath.h>
-target_include_directories(${exe_name} PUBLIC "C:/Program Files (x86)/Microsoft DirectX SDK (June 2010)/Include")
 
 target_link_libraries(${exe_name} ${DirectX11_LIBRARY})

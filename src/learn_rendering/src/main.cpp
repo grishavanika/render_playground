@@ -10,11 +10,8 @@
 #include <d3d11.h>
 #pragma warning(pop)
 
-#pragma warning(push)
-// conversion requires a narrowing conversion
-#pragma warning(disable : 4838)
-#include <xnamath.h>
-#pragma warning(pop)
+#include <directxmath.h>
+using namespace DirectX;
 
 #include <cstdlib>
 
