@@ -34,7 +34,7 @@ add_subdirectory(src/lr_model)
 
 # exe
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/tools/cmake")
-add_subdirectory(src/learn_rendering)
+add_subdirectory(src/lr_app)
 add_subdirectory(src/lr_export)
 
 # tests
