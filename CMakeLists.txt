@@ -1,6 +1,6 @@
 # Require 3.11+ for FetchContent* support
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
-project(learn_rendering)
+project(lr)
 
 include(CheckCXXCompilerFlag)
 include(GenerateExportHeader)
@@ -30,9 +30,11 @@ endif()
 # add_subdirectory(third_party)
 
 # libraries
+add_subdirectory(src/lr_model)
 
 # exe
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/tools/cmake")
 add_subdirectory(src/learn_rendering)
+add_subdirectory(src/lr_export)
 
 # tests

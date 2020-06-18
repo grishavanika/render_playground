@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include <windows.h>
 
 #include <Windows.h>
@@ -24,17 +25,12 @@ using namespace DirectX;
 #include "stub_window.h"
 #include "utils.h"
 
-#define XX_OBJECT_ROTATE() 0
+#include "model.h"
+
+#define XX_OBJECT_ROTATE() 1
 #define XX_WIREFRAME() 0
-#define XX_RENDER_2_OBJECTS() 1
 
-struct Vertex
-{
-    XMFLOAT3 position;
-    XMFLOAT3 normal;
-};
-
-D3D11_INPUT_ELEMENT_DESC layout[] =
+const D3D11_INPUT_ELEMENT_DESC layout[] =
 {
     {
         .SemanticName = "position",
@@ -54,183 +50,16 @@ D3D11_INPUT_ELEMENT_DESC layout[] =
         .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
         .InstanceDataStepRate = 0
     },
+    {
+        .SemanticName = "texcoord",
+        .SemanticIndex = 0,
+        .Format = DXGI_FORMAT_R32G32_FLOAT,
+        .InputSlot = 0,
+        .AlignedByteOffset = offsetof(Vertex, texture_coord),
+        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+        .InstanceDataStepRate = 0
+    },
 };
-
-// v -2.40469 2.71917 -2.89007
-// vn 0.316163 -0.948077 0.034505
-// f -2283//-2283 -2395//-2395 -2344//-2344 
-void LoadObj_Simple(const char* filename
-    , std::vector<Vertex>& verticies
-    , std::vector<WORD>& indices)
-{
-    FILE* f = nullptr;
-    const errno_t e = fopen_s(&f, filename, "rb");
-    Panic(!e);
-
-    char header[2];
-    int vn_index = 0;
-
-    auto add_index = [&](int v)
-    {
-        Panic(v < 0);
-        const int verticies_count = int(verticies.size());
-        int index = verticies_count + v;
-        if ((index >= 0) && (index < verticies_count))
-        {
-            indices.push_back(WORD(index));
-        }
-        else
-        {
-            Panic(false);
-        }
-    };
-
-    while (fread_s(header, 2, 1, 2, f) == 2)
-    {
-        if (strncmp(header, "v ", 2) == 0)
-        {
-            Vertex v;
-            const int c = fscanf_s(f, "%f %f %f\n"
-                , &v.position.x, &v.position.y, &v.position.z);
-            Panic(c == 3);
-            verticies.push_back(v);
-        }
-        else if (strncmp(header, "vn", 2) == 0)
-        {
-            Panic(vn_index < int(verticies.size()));
-            Vertex& v = verticies[vn_index];
-            const int c = fscanf_s(f, " %f %f %f\n"
-                , &v.normal.x, &v.normal.y, &v.normal.z);
-            Panic(c == 3);
-            ++vn_index;
-        }
-        else if (strncmp(header, "f ", 2) == 0)
-        {
-            int v1 = 0;
-            int v2 = 0;
-            int v3 = 0;
-            int _ = 0;
-            const int c = fscanf_s(f, "%i//%i %i//%i %i//%i \n"
-                , &v1, &_, &v2, &_, &v3, &_);
-            Panic(c == 6);
-            add_index(v1);
-            add_index(v2);
-            add_index(v3);
-        }
-        else
-        {
-            Panic(false && "Unknown .obj directive");
-        }
-    }
-
-    Panic(vn_index == int(verticies.size()));
-
-    fclose(f);
-}
-#if (0)
-#include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
-#include <assimp/scene.h>
-
-void LoadObj_Assimp(const char* filename
-    , std::vector<Vertex>& verticies
-    , std::vector<WORD>& indices
-    , int meshIdx = 0)
-{
-    Assimp::Importer importer;
-    const aiScene* scene =
-        importer.ReadFile(filename, aiProcess_Triangulate);
-    Panic(scene);
-    Panic(meshIdx < int(scene->mNumMeshes));
-    const aiMesh* mesh = scene->mMeshes[meshIdx];
-    Panic(mesh);
-
-    verticies.reserve(mesh->mNumVertices);
-    for (unsigned i = 0; i < mesh->mNumVertices; ++i)
-    {
-        verticies.push_back({});
-        Vertex& v = verticies.back();
-        v.position.x = mesh->mVertices[i].x;
-        v.position.y = mesh->mVertices[i].y;
-        v.position.z = mesh->mVertices[i].z;
-        if (mesh->mNormals)
-        {
-            v.normal.x = mesh->mNormals[i].x;
-            v.normal.y = mesh->mNormals[i].y;
-            v.normal.z = mesh->mNormals[i].z;
-        }
-    }
-    for (int i = 0; i < int(mesh->mNumFaces); ++i)
-    {
-        for (int j = 0; j < int(mesh->mFaces[i].mNumIndices); ++j)
-        {
-            indices.push_back(WORD(mesh->mFaces[i].mIndices[j]));
-        }
-    }
-}
-#endif
-
-void LoadObj_Predefined(
-    std::vector<Vertex>& verticies
-    , std::vector<WORD>& indices)
-{
-    const Vertex vertices_raw[] =
-    {
-        {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f)},
-        {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f)},
-        {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f)},
-        {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f)},
-
-        {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)},
-        {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)},
-        {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)},
-        {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f)},
-
-        {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)},
-        {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)},
-        {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)},
-        {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f)},
-
-        {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-        {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-        {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-        {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-
-        {XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)},
-        {XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)},
-        {XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)},
-        {XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f)},
-
-        {XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)},
-        {XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)},
-        {XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)},
-        {XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f)},
-    };
-
-    const WORD indices_raw[] =
-    {
-        3, 1, 0,
-        2, 1, 3,
-
-        6, 4, 5,
-        7, 4, 6,
-
-        11, 9, 8,
-        10, 9, 11,
-
-        14, 12, 13,
-        15, 12, 14,
-
-        19, 17, 16,
-        18, 17, 19,
-
-        22, 20, 21,
-        23, 20, 22
-    };
-
-    verticies.assign(vertices_raw, vertices_raw + 24);
-    indices.assign(indices_raw, indices_raw + 36);
-}
 
 #pragma warning(push)
 // structure was padded due to alignment specifier
@@ -242,7 +71,7 @@ struct GameState
     float mouse_scroll_sensitivity_ = 0.05f;
     float camera_yaw_degrees_ = 0.f;
     float camera_pitch_degrees_ = 0.f;
-    float camera_rotation_mouse_sensitivity_ = 0.05f;
+    float camera_rotation_mouse_sensitivity_ = 0.04f;
     float camera_move_speed_ = 0.5f;
 
     std::unordered_set<WPARAM> keys_down_;
@@ -261,28 +90,149 @@ struct GameState
 };
 #pragma warning(pop)
 
+// Create needed resources AND leak them for now.
+struct RenderMesh
+{
+    ID3D11Buffer* vertex_buffer;
+    ID3D11Buffer* index_buffer;
+    UINT indices_count;
+    std::uint32_t ps_texture0_id;
+
+    static RenderMesh make(ID3D11Device& device, const Mesh& mesh)
+    {
+        RenderMesh render{};
+        render.indices_count = UINT(mesh.indices.size());
+        render.ps_texture0_id = mesh.texture_diffuse_id;
+
+        D3D11_BUFFER_DESC bd{};
+
+        // VB.
+        Panic(!mesh.vertices.empty());
+        bd.Usage = D3D11_USAGE_DEFAULT;
+        bd.ByteWidth = UINT(mesh.vertices.size() * sizeof(Vertex));
+        bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        bd.CPUAccessFlags = 0;
+        D3D11_SUBRESOURCE_DATA InitData{};
+        InitData.pSysMem = mesh.vertices.data();
+        HRESULT hr = device.CreateBuffer(&bd, &InitData, &render.vertex_buffer);
+        Panic(SUCCEEDED(hr));
+
+        // IB.
+        Panic(!mesh.indices.empty());
+        bd.Usage = D3D11_USAGE_DEFAULT;
+        bd.ByteWidth = UINT(mesh.indices.size() * sizeof(WORD));
+        bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+        bd.CPUAccessFlags = 0;
+        InitData.pSysMem = mesh.indices.data();
+        hr = device.CreateBuffer(&bd, &InitData, &render.index_buffer);
+        Panic(SUCCEEDED(hr));
+
+        return render;
+    }
+};
+
+struct RenderTexture
+{
+    ID3D11ShaderResourceView* texture_view;
+    std::uint32_t texture_id;
+
+    static RenderTexture make(ID3D11Device& device, const Texture& texture)
+    {
+        RenderTexture render{};
+        render.texture_id = texture.id;
+
+        D3D11_TEXTURE2D_DESC t2d_desc{};
+        t2d_desc.Width = texture.width;
+        t2d_desc.Height = texture.height;
+        t2d_desc.MipLevels = 1;
+        t2d_desc.ArraySize = 1;
+        t2d_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        t2d_desc.SampleDesc.Count = 1;
+        t2d_desc.SampleDesc.Quality = 0;
+        t2d_desc.Usage = D3D11_USAGE_DEFAULT;
+        t2d_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        t2d_desc.CPUAccessFlags = 0;
+        t2d_desc.MiscFlags = 0;
+
+        D3D11_SUBRESOURCE_DATA subresource{};
+        subresource.pSysMem = texture.data.data();
+        subresource.SysMemPitch = (texture.width * c_texture_channels);
+        subresource.SysMemSlicePitch = 0; // not used for 2d textures.
+
+        ID3D11Texture2D* texture2d = nullptr;
+        HRESULT hr = device.CreateTexture2D(&t2d_desc, &subresource, &texture2d);
+        Panic(SUCCEEDED(hr));
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc{};
+        SRVDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        SRVDesc.Texture2D.MipLevels = 1;
+
+        hr = device.CreateShaderResourceView(texture2d, &SRVDesc, &render.texture_view);
+        Panic(SUCCEEDED(hr));
+        texture2d->Release();
+
+        return render;
+    }
+};
+
+struct RenderModel
+{
+    const Model* model;
+    std::vector<RenderMesh> meshes;
+    std::vector<RenderTexture> textures;
+
+    static RenderModel make(ID3D11Device& device, const Model& model)
+    {
+        RenderModel render{};
+        render.model = &model;
+
+        for (std::uint32_t i = 0; i < model.meshes_count_; ++i)
+        {
+            render.meshes.push_back(RenderMesh::make(
+                device, model.get_mesh(i)));
+        }
+        for (std::uint32_t i = 0; i < model.textures_count_; ++i)
+        {
+            render.textures.push_back(RenderTexture::make(
+                device, model.get_texture(i)));
+        }
+        return render;
+    }
+
+    ID3D11ShaderResourceView* get_texture(std::uint32_t id)
+    {
+        for (const RenderTexture& texture : textures)
+        {
+            if (texture.texture_id == id)
+            {
+                Panic(texture.texture_view);
+                return texture.texture_view;
+            }
+        }
+        return nullptr;
+    }
+};
+
+struct ConstantBuffer
+{
+    XMMATRIX world;
+    XMMATRIX view;
+    XMMATRIX projection;
+};
+
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
-    const char* const obj = R"(D:\Downloads\skull_part.obj)";
-    //const char* const obj = R"(skull_part.obj)";
-    //const char* const obj = R"(K:\teapot.obj.txt)";
-
-    std::vector<Vertex> obj_verticies;
-    std::vector<WORD> obj_indices;
-#if (1)
-    LoadObj_Simple(obj, obj_verticies, obj_indices);
-#elif (0)
-    LoadObj_Assimp(obj, obj_verticies, obj_indices);
+#if (XX_HAS_TEXTURE_COORDS())
+    const char* const obj = R"(K:\backpack\backpack.lr.bin)";
 #else
-    LoadObj_Predefined(obj_verticies, obj_indices);
-    (void)obj;
+    const char* const obj = R"(K:\skull\skull.lr.bin)";
 #endif
 
-    Panic(!obj_verticies.empty());
-    Panic(!obj_indices.empty());
+    Model model = LoadModel(obj);
 
     GameState game;
-    StubWindow window("_xxxWindowClassName");
+    StubWindow window("xxx_lr");
     window.on_message(WM_PAINT
         , [](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
@@ -374,12 +324,13 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         return ::DefWindowProc(hwnd, message, wparam, lparam);
     });
 
-    RAWINPUTDEVICE Rid{};
-    Rid.usUsagePage = 0x01; // generic
-    Rid.usUsage = 0x02; // mouse
-    Rid.dwFlags = RIDEV_INPUTSINK;
-    Rid.hwndTarget = window.wnd();
-    Panic(::RegisterRawInputDevices(&Rid, 1, sizeof(RAWINPUTDEVICE)));
+    RAWINPUTDEVICE raw_mouse{};
+    raw_mouse.usUsagePage = 0x01; // generic
+    raw_mouse.usUsage = 0x02; // mouse
+    raw_mouse.dwFlags = RIDEV_INPUTSINK;
+    raw_mouse.hwndTarget = window.wnd();
+    Panic(::RegisterRawInputDevices(&raw_mouse, 1, sizeof(RAWINPUTDEVICE)));
+
     window.on_message(WM_INPUT
         , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
@@ -448,7 +399,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         game.camera_right_dir_ = XMVector3Normalize(XMVector3Cross(game.camera_front_dir_, game.camera_up_dir_));
     }
 
-    // Device initialization
+    // Device initialization.
     DXGI_SWAP_CHAIN_DESC sc_desc{};
     sc_desc.BufferCount = 1;
     sc_desc.BufferDesc.Width = client_width;
@@ -479,15 +430,15 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         , &game.device_context_);
     Panic(SUCCEEDED(hr));
 
-    // Create a render target view
-    ID3D11Texture2D* pBackBuffer = nullptr;
-    hr = game.swap_chain_->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<LPVOID*>(&pBackBuffer));
+    // Create a render target view.
+    ID3D11Texture2D* back_buffer = nullptr;
+    hr = game.swap_chain_->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<LPVOID*>(&back_buffer));
     Panic(SUCCEEDED(hr));
-    hr = game.device_->CreateRenderTargetView(pBackBuffer, nullptr, &game.render_target_view_);
+    hr = game.device_->CreateRenderTargetView(back_buffer, nullptr, &game.render_target_view_);
     Panic(SUCCEEDED(hr));
-    pBackBuffer->Release();
+    back_buffer->Release();
 
-    // Setup the viewport
+    // Setup the viewport.
     game.vp_.Width = static_cast<FLOAT>(client_width);
     game.vp_.Height = static_cast<FLOAT>(client_height);
     game.vp_.MinDepth = 0.0f;
@@ -495,80 +446,53 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     game.vp_.TopLeftX = 0;
     game.vp_.TopLeftY = 0;
 
-    // VS & IA
-    ID3D11VertexShader* vertexShader = nullptr;
-    hr = game.device_->CreateVertexShader(k_VS, sizeof(k_VS), nullptr, &vertexShader);
+    // VS & IA.
+    ID3D11VertexShader* vertex_shader = nullptr;
+    hr = game.device_->CreateVertexShader(k_VS, sizeof(k_VS), nullptr, &vertex_shader);
     Panic(SUCCEEDED(hr));
 
-    ID3D11InputLayout* vertexLayout = nullptr;
-    hr = game.device_->CreateInputLayout(layout, _countof(layout), k_VS, sizeof(k_VS), &vertexLayout);
+    ID3D11InputLayout* vertex_layout = nullptr;
+    hr = game.device_->CreateInputLayout(layout, _countof(layout), k_VS, sizeof(k_VS), &vertex_layout);
     Panic(SUCCEEDED(hr));
 
-    // PS
-    ID3D11PixelShader* pixelShader = nullptr;
-    hr = game.device_->CreatePixelShader(k_PS, sizeof(k_PS), nullptr, &pixelShader);
+    // PS.
+    ID3D11PixelShader* pixel_shader = nullptr;
+    hr = game.device_->CreatePixelShader(k_PS, sizeof(k_PS), nullptr, &pixel_shader);
     Panic(SUCCEEDED(hr));
-
-    // VB
-    D3D11_BUFFER_DESC bd{};
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = UINT(obj_verticies.size() * sizeof(Vertex));
-    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    D3D11_SUBRESOURCE_DATA InitData{};
-    InitData.pSysMem = obj_verticies.data();
-    ID3D11Buffer* vertexBuffer = nullptr;
-    hr = game.device_->CreateBuffer(&bd, &InitData, &vertexBuffer);
-    Panic(SUCCEEDED(hr));
-
-    // Create index buffer
-    ID3D11Buffer* indexBuffer = nullptr;
-
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = UINT(obj_indices.size() * sizeof(WORD));
-    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    InitData.pSysMem = obj_indices.data();
-    hr = game.device_->CreateBuffer(&bd, &InitData, &indexBuffer);
-    Panic(SUCCEEDED(hr));
-
-    struct ConstantBuffer
-    {
-        XMMATRIX world;
-        XMMATRIX view;
-        XMMATRIX projection;
-    };
 
     // Create the constant buffer
+    D3D11_BUFFER_DESC bd{};
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(ConstantBuffer);
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     bd.CPUAccessFlags = 0;
-    ID3D11Buffer* constantBuffer = nullptr;
-    hr = game.device_->CreateBuffer(&bd, nullptr, &constantBuffer);
+    ID3D11Buffer* constant_buffer = nullptr;
+    hr = game.device_->CreateBuffer(&bd, nullptr, &constant_buffer);
     Panic(SUCCEEDED(hr));
 
-    D3D11_TEXTURE2D_DESC depthTextureDesc{};
-    depthTextureDesc.Width = client_width;
-    depthTextureDesc.Height = client_height;
-    depthTextureDesc.MipLevels = 1;
-    depthTextureDesc.ArraySize = 1;
-    depthTextureDesc.SampleDesc.Count = 1;
-    depthTextureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    depthTextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    // Z-test/buffer.
+    D3D11_TEXTURE2D_DESC dept_texture_desc{};
+    dept_texture_desc.Width = client_width;
+    dept_texture_desc.Height = client_height;
+    dept_texture_desc.MipLevels = 1;
+    dept_texture_desc.ArraySize = 1;
+    dept_texture_desc.SampleDesc.Count = 1;
+    dept_texture_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dept_texture_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
     ID3D11Texture2D* depth_stencil_texture = nullptr;
-    hr = game.device_->CreateTexture2D(&depthTextureDesc, nullptr, &depth_stencil_texture);
+    hr = game.device_->CreateTexture2D(&dept_texture_desc, nullptr, &depth_stencil_texture);
     Panic(SUCCEEDED(hr));
 
     D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-    dsvDesc.Format = depthTextureDesc.Format;
+    dsvDesc.Format = dept_texture_desc.Format;
     dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
 
     hr = game.device_->CreateDepthStencilView(depth_stencil_texture, &dsvDesc, &game.depth_buffer_);
     depth_stencil_texture->Release();
     Panic(SUCCEEDED(hr));
 
+    // Ability to enable/disable wireframe.
     D3D11_RASTERIZER_DESC wfd{};
 #if (XX_WIREFRAME())
     wfd.FillMode = D3D11_FILL_WIREFRAME;
@@ -582,8 +506,22 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     hr = game.device_->CreateRasterizerState(&wfd, &rasterizerState);
     Panic(SUCCEEDED(hr));
 
-    const float k_ClearColor[4] = {0.f, 0.f, 0.0f, 1.0f};
-    
+    // Create the sample state.
+    // Texture sampling for PS.
+    D3D11_SAMPLER_DESC sampler_desc{};
+    sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    sampler_desc.MinLOD = 0;
+    sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
+    ID3D11SamplerState* sampler_linear = NULL;
+    hr = game.device_->CreateSamplerState(&sampler_desc, &sampler_linear);
+    Panic(SUCCEEDED(hr));
+
+    RenderModel render_model = RenderModel::make(*game.device_, model);
+
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
     XMMATRIX world = XMMatrixIdentity();
@@ -629,7 +567,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         projection = XMMatrixPerspectiveFovLH(game.fov_y_
             , game.aspect_ratio_
-            , 0.01f // NearZ
+            , 0.01f    // NearZ
             , 100.0f); // FarZ
         const float t = (::GetTickCount() - dwTimeStart) / 1000.0f;
 
@@ -642,81 +580,61 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             * XMMatrixRotationY(2.5);
 
 #if (XX_OBJECT_ROTATE())
+#if (XX_HAS_TEXTURE_COORDS())
+        world = (world * XMMatrixRotationX(t));
+#else
         world = (world * XMMatrixRotationY(t));
+#endif
 #endif
 #if (1) // translate
         world = (world * XMMatrixTranslation(+40.f, -10.f, +5.f));
 #endif
 
-        // Just clear the backbuffer
-        game.device_context_->ClearRenderTargetView(game.render_target_view_, k_ClearColor);
+        // Clear.
+        const float c_clear_color[4] = {1.f, 1.f, 1.0f, 1.0f};
+        game.device_context_->ClearRenderTargetView(game.render_target_view_, c_clear_color);
         game.device_context_->ClearDepthStencilView(game.depth_buffer_
             , D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
+        // Render.
+        for (const RenderMesh& render_mesh : render_model.meshes)
         {
             ConstantBuffer cb;
-            cb.world = XMMatrixTranspose(world);
-            cb.view = XMMatrixTranspose(view);
+            cb.world      = XMMatrixTranspose(world);
+            cb.view       = XMMatrixTranspose(view);
             cb.projection = XMMatrixTranspose(projection);
+
+            ID3D11ShaderResourceView* ps_texture0 = render_model.get_texture(render_mesh.ps_texture0_id);
 
             UINT stride = sizeof(Vertex);
             UINT offset = 0;
             // Input Assembler.
-            game.device_context_->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-            game.device_context_->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+            game.device_context_->IASetVertexBuffers(0, 1, &render_mesh.vertex_buffer, &stride, &offset);
+            game.device_context_->IASetIndexBuffer(render_mesh.index_buffer, DXGI_FORMAT_R16_UINT, 0);
             game.device_context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            game.device_context_->IASetInputLayout(vertexLayout);
+            game.device_context_->IASetInputLayout(vertex_layout);
             // Vertex Shader.
-            game.device_context_->VSSetShader(vertexShader, nullptr, 0);
-            game.device_context_->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
-            game.device_context_->VSSetConstantBuffers(0, 1, &constantBuffer);
+            game.device_context_->VSSetShader(vertex_shader, nullptr, 0);
+            game.device_context_->UpdateSubresource(constant_buffer, 0, nullptr, &cb, 0, 0);
+            game.device_context_->VSSetConstantBuffers(0, 1, &constant_buffer);
             // Rasterizer Stage.
             game.device_context_->RSSetState(rasterizerState);
             game.device_context_->RSSetViewports(1, &game.vp_);
             // Pixel Shader.
-            game.device_context_->PSSetShader(pixelShader, nullptr, 0);
+            game.device_context_->PSSetShader(pixel_shader, nullptr, 0);
+            if (ps_texture0)
+            {
+                game.device_context_->PSSetShaderResources(0, 1, &ps_texture0);
+            }
+            game.device_context_->PSSetSamplers(0, 1, &sampler_linear);
             // Output Merger.
             game.device_context_->OMSetRenderTargets(1, &game.render_target_view_, game.depth_buffer_);
 
             // Actual draw call.
-            game.device_context_->DrawIndexed(UINT(obj_indices.size()), 0, 0);
+            game.device_context_->DrawIndexed(render_mesh.indices_count, 0, 0);
         }
 
-#if (XX_RENDER_2_OBJECTS())
-        {
-            XMMATRIX world2 = world * XMMatrixTranslation(-15.f, +7.f, +7.f);
-
-            ConstantBuffer cb;
-            cb.world = XMMatrixTranspose(world2);
-            cb.view = XMMatrixTranspose(view);
-            cb.projection = XMMatrixTranspose(projection);
-
-            // Update constants for Vertex shader.
-            game.device_context_->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
-
-            UINT stride = sizeof(Vertex);
-            UINT offset = 0;
-            // Input Assembler.
-            game.device_context_->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-            game.device_context_->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
-            game.device_context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            game.device_context_->IASetInputLayout(vertexLayout);
-            // Vertex Shader.
-            game.device_context_->VSSetShader(vertexShader, nullptr, 0);
-            game.device_context_->UpdateSubresource(constantBuffer, 0, nullptr, &cb, 0, 0);
-            game.device_context_->VSSetConstantBuffers(0, 1, &constantBuffer);
-            // Rasterizer Stage.
-            game.device_context_->RSSetState(rasterizerState);
-            game.device_context_->RSSetViewports(1, &game.vp_);
-            // Pixel Shader.
-            game.device_context_->PSSetShader(pixelShader, nullptr, 0);
-            // Output Merger.
-            game.device_context_->OMSetRenderTargets(1, &game.render_target_view_, game.depth_buffer_);
-
-            // Actual draw call.
-            game.device_context_->DrawIndexed(UINT(obj_indices.size()), 0, 0);
-        }
-#endif
+        // Present.
         const UINT SyncInterval = 1; // Synchronize presentation after single vertical blank.
         const HRESULT ok = game.swap_chain_->Present(SyncInterval, 0);
         Panic(SUCCEEDED(ok));
@@ -727,12 +645,10 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     game.swap_chain_->Release();
     game.device_context_->Release();
     game.device_->Release();
-    vertexBuffer->Release();
-    vertexLayout->Release();
-    vertexShader->Release();
-    pixelShader->Release();
-    constantBuffer->Release();
-    indexBuffer->Release();
+    vertex_layout->Release();
+    vertex_shader->Release();
+    pixel_shader->Release();
+    constant_buffer->Release();
     rasterizerState->Release();
     game.depth_buffer_->Release();
 
