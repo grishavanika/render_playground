@@ -144,7 +144,7 @@ void Assimp_ProcessNode(const aiScene& scene, const aiNode& node, F on_new_mesh)
     }
     for (unsigned int i = 0; i < node.mNumChildren; ++i)
     {
-        Assimp_ProcessNode(scene, *node.mChildren[i], std::move(on_new_mesh));
+        Assimp_ProcessNode(scene, *node.mChildren[i], on_new_mesh);
     }
 }
 
