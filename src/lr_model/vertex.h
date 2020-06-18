@@ -22,5 +22,5 @@ struct Vertex
     Vector2f texture_coord; // diffuse
 };
 
-using Index = unsigned short;
-static_assert(sizeof(Index) == 2); // To avoid including <cstdint>
+using Index = unsigned int;
+static_assert(sizeof(Index) == 4); // To avoid including <cstdint>

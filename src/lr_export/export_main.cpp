@@ -59,7 +59,9 @@ AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
     static_assert(std::is_same_v<float, ai_real>);
 
     Panic(mesh.mVertices);                // expect to have vertices
+#if (XX_HAS_NORMALS())
     Panic(mesh.mNormals);                 //   and normals
+#endif
 #if (XX_HAS_TEXTURE_COORDS())
     Panic(mesh.mTextureCoords);           //   and texture coords
     Panic(mesh.mTextureCoords[0]);        //   ... one per vertex
@@ -88,9 +90,15 @@ AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
         v.position.y = mesh.mVertices[i].y;
         v.position.z = mesh.mVertices[i].z;
 
+#if (XX_HAS_NORMALS())
         v.normal.x = mesh.mNormals[i].x;
         v.normal.y = mesh.mNormals[i].y;
         v.normal.z = mesh.mNormals[i].z;
+#else
+        v.normal.x = 0.f;
+        v.normal.y = 0.f;
+        v.normal.z = 0.f;
+#endif
 
 #if (XX_HAS_TEXTURE_COORDS())
         v.texture_coord.x = mesh.mTextureCoords[0][i].x;
@@ -100,6 +108,9 @@ AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
         v.texture_coord.y = 0.f;
 #endif
     }
+
+    static_assert(sizeof(Index) <= sizeof(unsigned int)
+        , "Assimp supports indices up to unsigned int");
 
     for (unsigned int i = 0; i < mesh.mNumFaces; ++i)
     {
@@ -203,10 +214,12 @@ AssimpModel Assimp_Load(fs::path file_path)
 
 int main()
 {
-#if (XX_HAS_TEXTURE_COORDS())
+#if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
     const fs::path model_file = R"(K:\backpack\backpack.obj)";
-#else
+#elif (XX_HAS_NORMALS())
     const fs::path model_file = R"(K:\skull\skull.obj)";
+#else
+    const fs::path model_file = R"(K:\tyrannosaurus-rex-skeleton\source\dyno_tex.obj)";
 #endif
 
     AssimpModel model = Assimp_Load(model_file);
@@ -217,7 +230,9 @@ int main()
     header.meshes_count = std::uint32_t(model.meshes.size());
     header.textures_count = std::uint32_t(model.materials.size());
 
+#if (XX_HAS_NORMALS())
     header.capabilitis |= std::uint16_t(Capabilities::Normals);
+#endif
 #if (XX_HAS_TEXTURE_COORDS())
     header.capabilitis |= std::uint16_t(Capabilities::TextureCoords);
     header.capabilitis |= std::uint16_t(Capabilities::TextureRGBA);

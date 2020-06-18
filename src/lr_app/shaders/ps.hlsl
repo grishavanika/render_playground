@@ -10,11 +10,15 @@ struct VS_OUTPUT
 
 float4 main_ps(VS_OUTPUT input) : SV_Target
 {
+#if (1)
     float3 light_dir = float3(0., 1., 0.);
     float3 light_color = float3(1., 1., 1.);
     float3 color = saturate(dot(light_dir, input.Norm)) * light_color;
+#else
+    float3 color = float3(1., 0., 0.);
+#endif
 
-#if (0)
+#if (1)
     return txDiffuse.Sample(samLinear, input.Tex) * float4(color, 1.);
 #elif (0)
     return txDiffuse.Sample(samLinear, input.Tex);

@@ -90,6 +90,20 @@ struct GameState
 };
 #pragma warning(pop)
 
+constexpr DXGI_FORMAT GetIndexBufferFormat()
+{
+    if constexpr ((sizeof(Index) == 2) && std::is_unsigned_v<Index>)
+    {
+        return DXGI_FORMAT_R16_UINT;
+    }
+    else if constexpr ((sizeof(Index) == 4) && std::is_unsigned_v<Index>)
+    {
+        return DXGI_FORMAT_R32_UINT;
+    }
+    // Intentionally no return to fail compilation.
+    // (Control reaching the end of a constexpr function).
+}
+
 // Create needed resources AND leak them for now.
 struct RenderMesh
 {
@@ -120,7 +134,7 @@ struct RenderMesh
         // IB.
         Panic(!mesh.indices.empty());
         bd.Usage = D3D11_USAGE_DEFAULT;
-        bd.ByteWidth = UINT(mesh.indices.size() * sizeof(WORD));
+        bd.ByteWidth = UINT(mesh.indices.size() * sizeof(Index));
         bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
         bd.CPUAccessFlags = 0;
         InitData.pSysMem = mesh.indices.data();
@@ -223,10 +237,12 @@ struct ConstantBuffer
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
-#if (XX_HAS_TEXTURE_COORDS())
+#if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
     const char* const obj = R"(K:\backpack\backpack.lr.bin)";
-#else
+#elif (XX_HAS_NORMALS())
     const char* const obj = R"(K:\skull\skull.lr.bin)";
+#else
+    const char* const obj = R"(K:\tyrannosaurus-rex-skeleton\source\dyno_tex.lr.bin)";
 #endif
 
     Model model = LoadModel(obj);
@@ -610,7 +626,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             UINT offset = 0;
             // Input Assembler.
             game.device_context_->IASetVertexBuffers(0, 1, &render_mesh.vertex_buffer, &stride, &offset);
-            game.device_context_->IASetIndexBuffer(render_mesh.index_buffer, DXGI_FORMAT_R16_UINT, 0);
+            game.device_context_->IASetIndexBuffer(render_mesh.index_buffer, GetIndexBufferFormat(), 0);
             game.device_context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             game.device_context_->IASetInputLayout(vertex_layout);
             // Vertex Shader.

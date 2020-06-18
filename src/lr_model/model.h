@@ -6,7 +6,8 @@
 
 #include <cstdint>
 
-#define XX_HAS_TEXTURE_COORDS() 0
+#define XX_HAS_TEXTURE_COORDS() 1
+#define XX_HAS_NORMALS() 1
 
 // RGBA, 8 bits per channel.
 // In the example (backpack/diffuse.png) it's actually
@@ -23,7 +24,7 @@ struct Texture
 struct Mesh
 {
     std::span<const Vertex> vertices;
-    std::span<const std::uint16_t> indices;
+    std::span<const Index> indices;
     std::uint32_t texture_diffuse_id;
 };
 
@@ -47,12 +48,12 @@ struct Model
 
 Model LoadModel(const char* filename);
 
-enum class Capabilities : std::uint16_t
+enum struct Capabilities : std::uint16_t
 {
-    Default       = 0x0,
-    Normals       = 0x1,
-    TextureCoords = 0x2,
-    TextureRGBA   = 0x4,
+    Default       = 0x0, // Minimum needed: vertices with faces/triangles
+    Normals       = 0x1, //  + normal per vertex
+    TextureCoords = 0x2, //  + 2D UV texture mapping
+    TextureRGBA   = 0x4, // texture is RGBA, 8 bit per channel, sRGB now.
 };
 
 struct Header

@@ -119,7 +119,9 @@ Model LoadModel(const char* filename)
     Panic(header->version_id == 0x2);
 
     std::uint16_t capabilitis = std::uint16_t(Capabilities::Default);
+#if (XX_HAS_NORMALS())
     capabilitis |= std::uint16_t(Capabilities::Normals);
+#endif
 #if (XX_HAS_TEXTURE_COORDS())
     capabilitis |= std::uint16_t(Capabilities::TextureCoords);
     capabilitis |= std::uint16_t(Capabilities::TextureRGBA);
