@@ -76,7 +76,7 @@ struct GameState
 
     std::unordered_set<WPARAM> keys_down_;
 
-    XMVECTOR camera_position_     = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
+    XMVECTOR camera_position_     = XMVectorSet(0.0f, 0.0f, -32.0f, 0.0f);
     const XMVECTOR camera_up_dir_ = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR camera_front_dir_    = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
     XMVECTOR camera_right_dir_    = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
@@ -228,11 +228,18 @@ struct RenderModel
     }
 };
 
-struct ConstantBuffer
+struct VSConstantBuffer0
 {
     XMMATRIX world;
     XMMATRIX view;
     XMMATRIX projection;
+};
+
+struct PSConstantBuffer0
+{
+    XMVECTOR light_color;
+    XMVECTOR light_position;
+    XMVECTOR viewer_position;
 };
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
@@ -476,14 +483,23 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     hr = game.device_->CreatePixelShader(k_PS, sizeof(k_PS), nullptr, &pixel_shader);
     Panic(SUCCEEDED(hr));
 
-    // Create the constant buffer
-    D3D11_BUFFER_DESC bd{};
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(ConstantBuffer);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = 0;
-    ID3D11Buffer* constant_buffer = nullptr;
-    hr = game.device_->CreateBuffer(&bd, nullptr, &constant_buffer);
+    // Create the constant buffer for VS.
+    D3D11_BUFFER_DESC vs_bd{};
+    vs_bd.Usage = D3D11_USAGE_DEFAULT;
+    vs_bd.ByteWidth = sizeof(VSConstantBuffer0);
+    vs_bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    vs_bd.CPUAccessFlags = 0;
+    ID3D11Buffer* vs_constant_buffer0 = nullptr;
+    hr = game.device_->CreateBuffer(&vs_bd, nullptr, &vs_constant_buffer0);
+    Panic(SUCCEEDED(hr));
+
+    D3D11_BUFFER_DESC ps_bd{};
+    ps_bd.Usage = D3D11_USAGE_DEFAULT;
+    ps_bd.ByteWidth = sizeof(PSConstantBuffer0);
+    ps_bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    ps_bd.CPUAccessFlags = 0;
+    ID3D11Buffer* ps_constant_buffer0 = nullptr;
+    hr = game.device_->CreateBuffer(&ps_bd, nullptr, &ps_constant_buffer0);
     Panic(SUCCEEDED(hr));
 
     // Z-test/buffer.
@@ -602,26 +618,37 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         world = (world * XMMatrixRotationY(t));
 #endif
 #endif
-#if (1) // translate
-        world = (world * XMMatrixTranslation(+40.f, -10.f, +5.f));
-#endif
 
         // Clear.
-        const float c_clear_color[4] = {1.f, 1.f, 1.0f, 1.0f};
+        const float c_clear_color[4] = {0.f, 0.f, 0.0f, 1.0f};
         game.device_context_->ClearRenderTargetView(game.render_target_view_, c_clear_color);
         game.device_context_->ClearDepthStencilView(game.depth_buffer_
             , D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
+        VSConstantBuffer0 vs_cb0;
+        vs_cb0.world = XMMatrixTranspose(world);
+        vs_cb0.view = XMMatrixTranspose(view);
+        vs_cb0.projection = XMMatrixTranspose(projection);
+
+        PSConstantBuffer0 ps_cb0;
+        ps_cb0.light_color = 20 * XMVectorSet(1.f, 1.f, 1.f, 1.0);
+        ps_cb0.viewer_position = game.camera_position_;
+#if (0)
+        ps_cb0.light_position = game.camera_position_;
+#else
+#if (1)
+        const float radius = 20.0f;
+        const float camX = sinf(t) * radius;
+        const float camZ = cosf(t) * radius - 15.f;
+        ps_cb0.light_position = XMVectorSet(camX, 0.0f, camZ, 0.0f);
+#else
+        ps_cb0.light_position = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
+#endif
+#endif
+
         // Render.
         for (const RenderMesh& render_mesh : render_model.meshes)
         {
-            ConstantBuffer cb;
-            cb.world      = XMMatrixTranspose(world);
-            cb.view       = XMMatrixTranspose(view);
-            cb.projection = XMMatrixTranspose(projection);
-
-            ID3D11ShaderResourceView* ps_texture0 = render_model.get_texture(render_mesh.ps_texture0_id);
-
             UINT stride = sizeof(Vertex);
             UINT offset = 0;
             // Input Assembler.
@@ -631,14 +658,16 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             game.device_context_->IASetInputLayout(vertex_layout);
             // Vertex Shader.
             game.device_context_->VSSetShader(vertex_shader, nullptr, 0);
-            game.device_context_->UpdateSubresource(constant_buffer, 0, nullptr, &cb, 0, 0);
-            game.device_context_->VSSetConstantBuffers(0, 1, &constant_buffer);
+            game.device_context_->UpdateSubresource(vs_constant_buffer0, 0, nullptr, &vs_cb0, 0, 0);
+            game.device_context_->VSSetConstantBuffers(0, 1, &vs_constant_buffer0);
             // Rasterizer Stage.
             game.device_context_->RSSetState(rasterizerState);
             game.device_context_->RSSetViewports(1, &game.vp_);
             // Pixel Shader.
             game.device_context_->PSSetShader(pixel_shader, nullptr, 0);
-            if (ps_texture0)
+            game.device_context_->UpdateSubresource(ps_constant_buffer0, 0, nullptr, &ps_cb0, 0, 0);
+            game.device_context_->PSSetConstantBuffers(0, 1, &ps_constant_buffer0);
+            if (ID3D11ShaderResourceView* ps_texture0 = render_model.get_texture(render_mesh.ps_texture0_id))
             {
                 game.device_context_->PSSetShaderResources(0, 1, &ps_texture0);
             }
@@ -664,7 +693,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     vertex_layout->Release();
     vertex_shader->Release();
     pixel_shader->Release();
-    constant_buffer->Release();
+    vs_constant_buffer0->Release();
     rasterizerState->Release();
     game.depth_buffer_->Release();
 
