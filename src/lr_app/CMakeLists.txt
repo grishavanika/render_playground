@@ -37,11 +37,13 @@ set_source_files_properties(shaders/ps_lines.hlsl PROPERTIES
 set(src_files
     cube_model_hardcoded.cpp
     render_main.cpp
+    render_model.cpp
     render_lines.cpp
     )
 set(header_files
     stub_window.h
     utils.h
+    render_model.h
     render_lines.h
     )
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
