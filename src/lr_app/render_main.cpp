@@ -31,24 +31,69 @@ using namespace DirectX;
 #include "render_lines.h"
 #include "render_model.h"
 
-#define XX_OBJECT_ROTATE() 0
-#define XX_WIREFRAME() 0
+struct ImGuiState
+{
+    bool show_demo_window = false;
+    bool show = false;
+    
+    // Lighting.
+    float light_power = 5.f;
+    ImVec4 light_color = ImVec4(1.f, 1.f, 1.f, 1.f);
+
+    // Model.
+    float model_scale = 1.f;
+    // Pitch, Yaw, Roll.
+    // http://hugin.sourceforge.net/docs/manual/Image_positioning_model.html#:~:text=Positive%20Roll%20values%20mean%20the,%2B90%C2%B0%20(Zenith).
+    ImVec4 model_rotation = ImVec4(0.f, 180.f, 0.f, 0.f);
+
+    // Render config.
+    bool wireframe = false;
+    bool need_change_wireframe = false;
+    bool show_model = true;
+    bool enable_mouse = false;
+
+    bool check_wireframe_change()
+    {
+        if (need_change_wireframe)
+        {
+            need_change_wireframe = false;
+            return true;
+        }
+        return false;
+    }
+    XMVECTOR get_light_color() const
+    {
+        return light_power * XMVectorSet(light_color.x, light_color.y, light_color.z, 1.f);
+    }
+    XMMATRIX get_model_scale() const
+    {
+        return XMMatrixScaling(model_scale, model_scale, model_scale);
+    }
+    XMMATRIX get_model_rotation() const
+    {
+        const float pitch = DegreesToRadians(model_rotation.x);
+        const float yaw   = DegreesToRadians(model_rotation.y);
+        const float roll  = DegreesToRadians(model_rotation.z);
+        return XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
+    }
+};
 
 #pragma warning(push)
 // structure was padded due to alignment specifier
 #pragma warning(disable:4324)
 struct GameState
 {
+    ImGuiState imgui_;
+
     float fov_y_ = DegreesToRadians(45.f);
     float aspect_ratio_ = 0.f;
     float mouse_scroll_sensitivity_ = 0.05f;
-    float camera_yaw_degrees_ = 90.f;
-    float camera_pitch_degrees_ = 0.f;
+    float camera_yaw_degrees_ = 90.f;  // [-180; 180]
+    float camera_pitch_degrees_ = 0.f; // [-90; 90]
     float camera_rotation_mouse_sensitivity_ = 0.04f;
     float camera_move_speed_ = 0.5f;
 
     std::unordered_set<WPARAM> keys_down_;
-    bool show_imgui_demo_window = true;
 
     XMVECTOR camera_position_     = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
     const XMVECTOR camera_up_dir_ = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -63,6 +108,72 @@ struct GameState
     ComPtr<ID3D11DepthStencilView> depth_buffer_;
 };
 #pragma warning(pop)
+
+void TickInput(GameState& game)
+{
+    if (game.keys_down_.contains(0x57)) // W
+    {
+        game.camera_position_ += (game.camera_move_speed_ * game.camera_front_dir_);
+    }
+    if (game.keys_down_.contains(0x53)) // S
+    {
+        game.camera_position_ -= (game.camera_front_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x41)) // A
+    {
+        game.camera_position_ += (game.camera_right_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x44)) // D
+    {
+        game.camera_position_ -= (game.camera_right_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x51)) // Q
+    {
+        game.camera_position_ -= (game.camera_up_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x45)) // E
+    {
+        game.camera_position_ += (game.camera_up_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x4D)) // M
+    {
+        game.imgui_.enable_mouse = !game.imgui_.enable_mouse;
+        game.keys_down_.erase(0x4D);
+    }
+}
+
+void TickImGui(GameState& game)
+{
+    if (game.imgui_.show_demo_window)
+    {
+        ImGui::ShowDemoWindow(&game.imgui_.show_demo_window);
+    }
+    if (!game.imgui_.show)
+    {
+        return;
+    }
+
+    ImGuiState& imgui = game.imgui_;
+    if (ImGui::Begin("Tweaks", &imgui.show))
+    {
+        (void)ImGui::Checkbox("Enable Mouse (M)", &imgui.enable_mouse);
+        ImGui::SameLine();
+        imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
+        (void)ImGui::Checkbox("Show model", &imgui.show_model);
+
+        (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
+        (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
+        (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 32.f);
+        
+        (void)ImGui::SliderFloat3("Model rotation (Pitch, Yaw, Roll)", (float*)&imgui.model_rotation, -180., 180.f);
+        imgui.model_rotation.x = std::clamp(imgui.model_rotation.x, -90.f, 90.f);
+
+        (void)ImGui::SliderFloat3("Camera position", (float*)&game.camera_position_, -100.f, 100.f);
+
+        (void)ImGui::Checkbox("ImGui Demo", &imgui.show_demo_window);
+    }
+    ImGui::End();
+}
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
@@ -185,7 +296,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     window.on_message(WM_INPUT
         , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
-        if (ImGui::GetIO().WantCaptureMouse)
+        if (ImGui::GetIO().WantCaptureMouse || !game.imgui_.enable_mouse)
         {
             // ImGui is in priority.
             return ::DefWindowProc(hwnd, message, wparam, lparam);
@@ -226,7 +337,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     window.on_message(WM_KEYUP
         , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
-        if (!ImGui::GetIO().WantCaptureKeyboard)
+        // if (!ImGui::GetIO().WantCaptureKeyboard)
         {
             (void)game.keys_down_.erase(wparam);
         }
@@ -238,9 +349,9 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         // Make possible to hide ImGui even when it's active (wants keyboard).
         if (wparam == 0xc0) // `
         {
-            game.show_imgui_demo_window = !game.show_imgui_demo_window;
+            game.imgui_.show = !game.imgui_.show;
         }
-        else if (!ImGui::GetIO().WantCaptureKeyboard)
+        // else if (!ImGui::GetIO().WantCaptureKeyboard)
         {
             (void)game.keys_down_.insert(wparam);
         }
@@ -338,11 +449,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
     // Ability to enable/disable wireframe.
     D3D11_RASTERIZER_DESC wfd{};
-#if (XX_WIREFRAME())
-    wfd.FillMode = D3D11_FILL_WIREFRAME;
-#else
     wfd.FillMode = D3D11_FILL_SOLID;
-#endif
     wfd.CullMode = D3D11_CULL_NONE;
     wfd.DepthClipEnable = TRUE;
     wfd.AntialiasedLineEnable = TRUE;
@@ -413,35 +520,9 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
-        if (game.show_imgui_demo_window)
-        {
-            ImGui::ShowDemoWindow(&game.show_imgui_demo_window);
-        }
 
-        if (game.keys_down_.contains(0x57)) // W
-        {
-            game.camera_position_ += (game.camera_move_speed_ * game.camera_front_dir_);
-        }
-        if (game.keys_down_.contains(0x53)) // S
-        {
-            game.camera_position_ -= (game.camera_front_dir_ * game.camera_move_speed_);
-        }
-        if (game.keys_down_.contains(0x41)) // A
-        {
-            game.camera_position_ += (game.camera_right_dir_ * game.camera_move_speed_);
-        }
-        if (game.keys_down_.contains(0x44)) // D
-        {
-            game.camera_position_ -= (game.camera_right_dir_ * game.camera_move_speed_);
-        }
-        if (game.keys_down_.contains(0x51)) // Q
-        {
-            game.camera_position_ -= (game.camera_up_dir_ * game.camera_move_speed_);
-        }
-        if (game.keys_down_.contains(0x45)) // E
-        {
-            game.camera_position_ += (game.camera_up_dir_ * game.camera_move_speed_);
-        }
+        TickImGui(game);
+        TickInput(game);
 
         projection = XMMatrixPerspectiveFovLH(game.fov_y_
             , game.aspect_ratio_
@@ -453,22 +534,13 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             , game.camera_position_ + game.camera_front_dir_
             , game.camera_up_dir_);
 
-        const float scale = 2.f;
         render_model.world = XMMatrixIdentity()
-            * XMMatrixScaling(scale, scale, scale)
-            * XMMatrixRotationY(2.5);
-#if (XX_OBJECT_ROTATE())
-#if (XX_HAS_TEXTURE_COORDS())
-        render_model.world *= XMMatrixRotationX(t);
-#else
-        render_model.world *= XMMatrixRotationY(t);
-#endif
-#endif
-        render_model.world *= XMMatrixTranslation(-2.f, 0.f, 0.f);
+            * game.imgui_.get_model_scale()
+            * game.imgui_.get_model_rotation();
 
-        render_model.light_color = 20 * XMVectorSet(1.f, 1.f, 1.f, 1.0);
+        render_model.light_color = game.imgui_.get_light_color();
         render_model.viewer_position = game.camera_position_;
-#if (1)
+#if (0)
         // render_model.light_position = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
         render_model.light_position = game.camera_position_;
 #else
@@ -477,6 +549,15 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         const float cam_z = (cosf(t) * radius);
         render_model.light_position = XMVectorSet(cam_x, 0.0f, cam_z, 0.0f);
 #endif
+        if (game.imgui_.check_wireframe_change())
+        {
+            wfd.FillMode = game.imgui_.wireframe
+                ? D3D11_FILL_WIREFRAME
+                : D3D11_FILL_SOLID;
+            rasterizer_state.Reset();
+            hr = game.device_->CreateRasterizerState(&wfd, &rasterizer_state);
+            Panic(SUCCEEDED(hr));
+        }
 
         // Clear.
         const float c_clear_color[4] = {0.f, 0.f, 0.0f, 1.0f};
@@ -493,9 +574,12 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         render_lines.render(*game.device_context_.Get()
             , XMMatrixTranspose(view)
             , XMMatrixTranspose(projection));
-        render_model.render(*game.device_context_.Get()
-            , XMMatrixTranspose(view)
-            , XMMatrixTranspose(projection));
+        if (game.imgui_.show_model)
+        {
+            render_model.render(*game.device_context_.Get()
+                , XMMatrixTranspose(view)
+                , XMMatrixTranspose(projection));
+        }
 
         // Rendering
         ImGui::Render();
