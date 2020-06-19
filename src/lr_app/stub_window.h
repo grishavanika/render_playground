@@ -56,9 +56,20 @@ public:
         handlers_[msg] = std::move(handler);
     }
 
+    void set_message_handler(MessageCallback handler)
+    {
+        wnd_handler_ = handler;
+    }
+
 private:
     LRESULT on_wnd_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
+        if (wnd_handler_
+            && (wnd_handler_(hwnd, msg, wparam, lparam) == TRUE))
+        {
+            return TRUE;
+        }
+
         const auto it = handlers_.find(msg);
         if (it != handlers_.end())
         {
@@ -172,6 +183,7 @@ private:
 
 private:
     const char* class_name_ = nullptr;
+    MessageCallback wnd_handler_;
     std::unordered_map<UINT, MessageCallback> handlers_;
     HWND wnd_ = nullptr;
 };

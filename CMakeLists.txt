@@ -27,7 +27,7 @@ if (GNU OR clang OR clang_on_msvc)
 endif()
 
 # third party libraries
-# add_subdirectory(third_party)
+add_subdirectory(third_party)
 
 # libraries
 add_subdirectory(src/lr_model)

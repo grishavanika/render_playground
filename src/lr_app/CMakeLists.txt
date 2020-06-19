@@ -64,3 +64,5 @@ target_include_directories(${exe_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 # DX11.
 target_include_directories(${exe_name} PUBLIC ${DirectX11_INCLUDE_DIRS})
 target_link_libraries(${exe_name} ${DirectX11_LIBRARY})
+# ImGui
+target_link_libraries(${exe_name} ImGui_Integrated)

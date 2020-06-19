@@ -14,6 +14,12 @@
 #include <directxmath.h>
 using namespace DirectX;
 
+// Integration of ImGui comes from
+// imgui-src/examples/example_win32_directx11/main.cpp
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
+
 #include <cstdlib>
 
 #include <vector>
@@ -42,6 +48,7 @@ struct GameState
     float camera_move_speed_ = 0.5f;
 
     std::unordered_set<WPARAM> keys_down_;
+    bool show_imgui_demo_window = true;
 
     XMVECTOR camera_position_     = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
     const XMVECTOR camera_up_dir_ = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -157,6 +164,11 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     window.on_message(WM_MOUSEWHEEL
         , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
+        if (ImGui::GetIO().WantCaptureMouse)
+        {
+            // ImGui is in priority.
+            return ::DefWindowProc(hwnd, message, wparam, lparam);
+        }
         const float delta_wheel = GET_WHEEL_DELTA_WPARAM(wparam);
         const float dv = (delta_wheel / WHEEL_DELTA) * game.mouse_scroll_sensitivity_;
         game.fov_y_ = std::clamp(game.fov_y_ - dv, DegreesToRadians(1.f), DegreesToRadians(90.f));
@@ -173,6 +185,12 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     window.on_message(WM_INPUT
         , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
+        if (ImGui::GetIO().WantCaptureMouse)
+        {
+            // ImGui is in priority.
+            return ::DefWindowProc(hwnd, message, wparam, lparam);
+        }
+
         RAWINPUT raw{};
         UINT size = sizeof(raw);
         const UINT status = ::GetRawInputData(HRAWINPUT(lparam)
@@ -208,13 +226,24 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     window.on_message(WM_KEYUP
         , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
-        (void)game.keys_down_.erase(wparam);
+        if (!ImGui::GetIO().WantCaptureKeyboard)
+        {
+            (void)game.keys_down_.erase(wparam);
+        }
         return ::DefWindowProc(hwnd, message, wparam, lparam);
     });
     window.on_message(WM_KEYDOWN
         , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
-        (void)game.keys_down_.insert(wparam);
+        // Make possible to hide ImGui even when it's active (wants keyboard).
+        if (wparam == 0xc0) // `
+        {
+            game.show_imgui_demo_window = !game.show_imgui_demo_window;
+        }
+        else if (!ImGui::GetIO().WantCaptureKeyboard)
+        {
+            (void)game.keys_down_.insert(wparam);
+        }
         return ::DefWindowProc(hwnd, message, wparam, lparam);
     });
 
@@ -321,6 +350,38 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     hr = game.device_->CreateRasterizerState(&wfd, &rasterizer_state);
     Panic(SUCCEEDED(hr));
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style.
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer bindings.
+    Panic(ImGui_ImplWin32_Init(window.wnd()));
+    Panic(ImGui_ImplDX11_Init(game.device_.Get(), game.device_context_.Get()));
+
+    // Forward declare message handler from imgui_impl_win32.cpp
+    extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
+        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+    window.set_message_handler(
+        [](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
+    {
+        if (ImGui_ImplWin32_WndProcHandler(hwnd, message, wparam, lparam))
+        {
+            return TRUE;
+        }
+        return FALSE;
+    });
+
+    ///////////////////////////////////////////////////////////////////////////
+
     RenderModel render_model = RenderModel::make(*game.device_.Get(), model);
     RenderLines render_lines = RenderLines::make(game.device_);
     render_lines.add_bbox(BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 1.f, 1.f)));
@@ -346,6 +407,15 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
             continue;
+        }
+
+        // Start the Dear ImGui frame.
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+        if (game.show_imgui_demo_window)
+        {
+            ImGui::ShowDemoWindow(&game.show_imgui_demo_window);
         }
 
         if (game.keys_down_.contains(0x57)) // W
@@ -427,11 +497,20 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             , XMMatrixTranspose(view)
             , XMMatrixTranspose(projection));
 
+        // Rendering
+        ImGui::Render();
+        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
         // Present.
         const UINT SyncInterval = 1; // Synchronize presentation after single vertical blank.
         hr = game.swap_chain_->Present(SyncInterval, 0);
         Panic(SUCCEEDED(hr));
     }
+
+    // Cleanup
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 
     return 0;
 }
