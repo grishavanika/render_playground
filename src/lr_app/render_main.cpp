@@ -27,6 +27,8 @@ using namespace DirectX;
 #include "shaders/vs_basic_phong_lighting.h"
 #include "shaders/ps_basic_phong_lighting.h"
 
+#include "render_lines.h"
+
 #define XX_OBJECT_ROTATE() 0
 #define XX_WIREFRAME() 0
 
@@ -475,16 +477,28 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
     // VS & IA.
     ID3D11VertexShader* vertex_shader = nullptr;
-    hr = game.device_->CreateVertexShader(k_VS, sizeof(k_VS), nullptr, &vertex_shader);
+    hr = game.device_->CreateVertexShader(
+        k_vs_basic_phong_lighting
+        , sizeof(k_vs_basic_phong_lighting)
+        , nullptr
+        , &vertex_shader);
     Panic(SUCCEEDED(hr));
 
     ID3D11InputLayout* vertex_layout = nullptr;
-    hr = game.device_->CreateInputLayout(layout, _countof(layout), k_VS, sizeof(k_VS), &vertex_layout);
+    hr = game.device_->CreateInputLayout(
+        layout
+        , _countof(layout)
+        , k_vs_basic_phong_lighting
+        , sizeof(k_vs_basic_phong_lighting)
+        , &vertex_layout);
     Panic(SUCCEEDED(hr));
 
     // PS.
     ID3D11PixelShader* pixel_shader = nullptr;
-    hr = game.device_->CreatePixelShader(k_PS, sizeof(k_PS), nullptr, &pixel_shader);
+    hr = game.device_->CreatePixelShader(
+        k_ps_basic_phong_lighting
+        , sizeof(k_ps_basic_phong_lighting)
+        , nullptr, &pixel_shader);
     Panic(SUCCEEDED(hr));
 
     // Create the constant buffer for VS.
@@ -557,6 +571,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     Panic(SUCCEEDED(hr));
 
     RenderModel render_model = RenderModel::make(*game.device_, model);
+    RenderLines render_lines = RenderLines::make(*game.device_);
+    render_lines.add_bbox(BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 1.f, 1.f)));
 
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
@@ -622,6 +638,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         world = (world * XMMatrixRotationY(t));
 #endif
 #endif
+        // world = world * XMMatrixTranslation(-2.f, 0.f, 0.f);
 
         // Clear.
         const float c_clear_color[4] = {0.f, 0.f, 0.0f, 1.0f};
@@ -649,8 +666,19 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         ps_cb0.light_position = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
 #endif
 #endif
+        { // Render lines.
+            RenderLines::LineVSConstantBuffer constants;
+            constants.view = XMMatrixTranspose(view);
+            constants.projection = XMMatrixTranspose(projection);
+            render_lines.render(
+                *game.device_context_
+                , *game.render_target_view_
+                , game.vp_
+                , constants);
+        }
 
-        // Render.
+#if (1)
+        // Render model.
         for (const RenderMesh& render_mesh : render_model.meshes)
         {
             UINT stride = sizeof(Vertex);
@@ -682,6 +710,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             // Actual draw call.
             game.device_context_->DrawIndexed(render_mesh.indices_count, 0, 0);
         }
+#endif
 
         // Present.
         const UINT SyncInterval = 1; // Synchronize presentation after single vertical blank.
