@@ -5,19 +5,22 @@ set(exe_name lr_app)
 find_package(DirectX11 REQUIRED)
 
 set(shaders_files
-    shaders/vs.hlsl
-    shaders/ps.hlsl
+    shaders/vs_basic_phong_lighting.hlsl
+    shaders/ps_basic_phong_lighting.hlsl
+# Not included to avoid compilation
+# TODO: check how to include but do not compile.
+#    shaders/common_basic_phong_lighting.hlsl
     )
-set_source_files_properties(shaders/vs.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT main_vs
-    VS_SHADER_TYPE Vertex
-    VS_SHADER_OUTPUT_HEADER_FILE shaders/vs.h
-    VS_SHADER_VARIABLE_NAME k_VS)
-set_source_files_properties(shaders/ps.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT main_ps
-    VS_SHADER_TYPE Pixel
-    VS_SHADER_OUTPUT_HEADER_FILE shaders/ps.h
-    VS_SHADER_VARIABLE_NAME k_PS)
+set_source_files_properties(shaders/vs_basic_phong_lighting.hlsl PROPERTIES
+    VS_SHADER_ENTRYPOINT          main_vs
+    VS_SHADER_TYPE                Vertex
+    VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_basic_phong_lighting.h
+    VS_SHADER_VARIABLE_NAME       k_VS)
+set_source_files_properties(shaders/ps_basic_phong_lighting.hlsl PROPERTIES
+    VS_SHADER_ENTRYPOINT          main_ps
+    VS_SHADER_TYPE                Pixel
+    VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_basic_phong_lighting.h
+    VS_SHADER_VARIABLE_NAME       k_PS)
 
 set(src_files
     cube_model_hardcoded.cpp

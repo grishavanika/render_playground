@@ -19,15 +19,15 @@ using namespace DirectX;
 #include <vector>
 #include <unordered_set>
 
-#include "shaders/vs.h"
-#include "shaders/ps.h"
-
 #include "stub_window.h"
 #include "utils.h"
 
 #include "model.h"
 
-#define XX_OBJECT_ROTATE() 1
+#include "shaders/vs_basic_phong_lighting.h"
+#include "shaders/ps_basic_phong_lighting.h"
+
+#define XX_OBJECT_ROTATE() 0
 #define XX_WIREFRAME() 0
 
 const D3D11_INPUT_ELEMENT_DESC layout[] =
@@ -276,6 +276,10 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         if (!game.device_)
         {
             // Window initialization; ignore.
+            return ::DefWindowProc(hwnd, message, wparam, lparam);
+        }
+        if (wparam == SIZE_MINIMIZED)
+        {
             return ::DefWindowProc(hwnd, message, wparam, lparam);
         }
         // Handling Window Resizing:
