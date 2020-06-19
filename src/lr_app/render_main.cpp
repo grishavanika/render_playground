@@ -71,24 +71,24 @@ struct GameState
     float fov_y_ = DegreesToRadians(45.f);
     float aspect_ratio_ = 0.f;
     float mouse_scroll_sensitivity_ = 0.05f;
-    float camera_yaw_degrees_ = 0.f;
+    float camera_yaw_degrees_ = 90.f;
     float camera_pitch_degrees_ = 0.f;
     float camera_rotation_mouse_sensitivity_ = 0.04f;
     float camera_move_speed_ = 0.5f;
 
     std::unordered_set<WPARAM> keys_down_;
 
-    XMVECTOR camera_position_     = XMVectorSet(0.0f, 0.0f, -32.0f, 0.0f);
+    XMVECTOR camera_position_     = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
     const XMVECTOR camera_up_dir_ = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR camera_front_dir_    = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
     XMVECTOR camera_right_dir_    = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 
     D3D11_VIEWPORT vp_{};
-    ID3D11Device* device_ = nullptr;
-    ID3D11DeviceContext* device_context_ = nullptr;
-    IDXGISwapChain* swap_chain_ = nullptr;
-    ID3D11RenderTargetView* render_target_view_ = nullptr;
-    ID3D11DepthStencilView* depth_buffer_ = nullptr;
+    ComPtr<ID3D11Device> device_;
+    ComPtr<ID3D11DeviceContext> device_context_;
+    ComPtr<IDXGISwapChain> swap_chain_;
+    ComPtr<ID3D11RenderTargetView> render_target_view_;
+    ComPtr<ID3D11DepthStencilView> depth_buffer_;
 };
 #pragma warning(pop)
 
@@ -106,11 +106,10 @@ constexpr DXGI_FORMAT GetIndexBufferFormat()
     // (Control reaching the end of a constexpr function).
 }
 
-// Create needed resources AND leak them for now.
 struct RenderMesh
 {
-    ID3D11Buffer* vertex_buffer;
-    ID3D11Buffer* index_buffer;
+    ComPtr<ID3D11Buffer> vertex_buffer;
+    ComPtr<ID3D11Buffer> index_buffer;
     UINT indices_count;
     std::uint32_t ps_texture0_id;
 
@@ -149,7 +148,7 @@ struct RenderMesh
 
 struct RenderTexture
 {
-    ID3D11ShaderResourceView* texture_view;
+    ComPtr<ID3D11ShaderResourceView> texture_view;
     std::uint32_t texture_id;
 
     static RenderTexture make(ID3D11Device& device, const Texture& texture)
@@ -175,7 +174,7 @@ struct RenderTexture
         subresource.SysMemPitch = (texture.width * c_texture_channels);
         subresource.SysMemSlicePitch = 0; // not used for 2d textures.
 
-        ID3D11Texture2D* texture2d = nullptr;
+        ComPtr<ID3D11Texture2D> texture2d;
         HRESULT hr = device.CreateTexture2D(&t2d_desc, &subresource, &texture2d);
         Panic(SUCCEEDED(hr));
 
@@ -184,24 +183,111 @@ struct RenderTexture
         SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         SRVDesc.Texture2D.MipLevels = 1;
 
-        hr = device.CreateShaderResourceView(texture2d, &SRVDesc, &render.texture_view);
+        hr = device.CreateShaderResourceView(texture2d.Get(), &SRVDesc, &render.texture_view);
         Panic(SUCCEEDED(hr));
-        texture2d->Release();
 
         return render;
     }
 };
 
+#pragma warning(push)
+// structure was padded due to alignment specifier
+#pragma warning(disable:4324)
 struct RenderModel
 {
+    // vs_basic_phong_lighting.hlsl
+    struct VSConstantBuffer0
+    {
+        XMMATRIX world;
+        XMMATRIX view;
+        XMMATRIX projection;
+    };
+
+    // ps_basic_phong_lighting.hlsl
+    struct PSConstantBuffer0
+    {
+        XMVECTOR light_color;
+        XMVECTOR light_position;
+        XMVECTOR viewer_position;
+    };
+
     const Model* model;
     std::vector<RenderMesh> meshes;
     std::vector<RenderTexture> textures;
+
+    ComPtr<ID3D11InputLayout> vertex_layout_;
+    ComPtr<ID3D11VertexShader> vertex_shader_;
+    ComPtr<ID3D11Buffer> vs_constant_buffer0_;
+    ComPtr<ID3D11PixelShader> pixel_shader_;
+    ComPtr<ID3D11Buffer> ps_constant_buffer0_;
+    ComPtr<ID3D11SamplerState> sampler_linear_;
+
+    // Tweak whole model position & orientation.
+    XMMATRIX world;
+
+    // Tweak light.
+    XMVECTOR light_color;
+    XMVECTOR light_position;
+    XMVECTOR viewer_position;
 
     static RenderModel make(ID3D11Device& device, const Model& model)
     {
         RenderModel render{};
         render.model = &model;
+
+        // VS & IA.
+        HRESULT hr = device.CreateInputLayout(
+            layout
+            , _countof(layout)
+            , k_vs_basic_phong_lighting
+            , sizeof(k_vs_basic_phong_lighting)
+            , &render.vertex_layout_);
+        Panic(SUCCEEDED(hr));
+
+        hr = device.CreateVertexShader(
+            k_vs_basic_phong_lighting
+            , sizeof(k_vs_basic_phong_lighting)
+            , nullptr
+            , &render.vertex_shader_);
+        Panic(SUCCEEDED(hr));
+
+        // Create the constant buffer for VS.
+        D3D11_BUFFER_DESC vs_bd{};
+        vs_bd.Usage = D3D11_USAGE_DEFAULT;
+        vs_bd.ByteWidth = sizeof(VSConstantBuffer0);
+        vs_bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        vs_bd.CPUAccessFlags = 0;
+        hr = device.CreateBuffer(&vs_bd, nullptr, &render.vs_constant_buffer0_);
+        Panic(SUCCEEDED(hr));
+
+        // PS.
+        hr = device.CreatePixelShader(
+            k_ps_basic_phong_lighting
+            , sizeof(k_ps_basic_phong_lighting)
+            , nullptr
+            , &render.pixel_shader_);
+        Panic(SUCCEEDED(hr));
+
+        D3D11_BUFFER_DESC ps_bd{};
+        ps_bd.Usage = D3D11_USAGE_DEFAULT;
+        ps_bd.ByteWidth = sizeof(PSConstantBuffer0);
+        ps_bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        ps_bd.CPUAccessFlags = 0;
+        hr = device.CreateBuffer(&ps_bd, nullptr, &render.ps_constant_buffer0_);
+        Panic(SUCCEEDED(hr));
+
+        // Create the sample state.
+        // Texture sampling for PS.
+        D3D11_SAMPLER_DESC sampler_desc{};
+        sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+        sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+        sampler_desc.MinLOD = 0;
+        sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
+        hr = device.CreateSamplerState(&sampler_desc, &render.sampler_linear_);
+        Panic(SUCCEEDED(hr));
 
         for (std::uint32_t i = 0; i < model.meshes_count_; ++i)
         {
@@ -216,33 +302,64 @@ struct RenderModel
         return render;
     }
 
-    ID3D11ShaderResourceView* get_texture(std::uint32_t id)
+    void render(ID3D11DeviceContext& device_context
+        , const DirectX::XMMATRIX& view_transposed
+        , const DirectX::XMMATRIX& projection_transposed) const
+    {
+        // Parameters for VS.
+        VSConstantBuffer0 vs_cb0;
+        vs_cb0.world      = XMMatrixTranspose(world);
+        vs_cb0.view       = view_transposed;
+        vs_cb0.projection = projection_transposed;
+
+        // Parameters for PS.
+        PSConstantBuffer0 ps_cb0;
+        ps_cb0.light_color     = light_color;
+        ps_cb0.viewer_position = viewer_position;
+        ps_cb0.light_position  = light_position;
+
+        for (const RenderMesh& render_mesh : meshes)
+        {
+            UINT stride = sizeof(Vertex);
+            UINT offset = 0;
+            // Input Assembler.
+            device_context.IASetVertexBuffers(0, 1, render_mesh.vertex_buffer.GetAddressOf(), &stride, &offset);
+            device_context.IASetIndexBuffer(render_mesh.index_buffer.Get(), GetIndexBufferFormat(), 0);
+            device_context.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            device_context.IASetInputLayout(vertex_layout_.Get());
+            // Vertex Shader.
+            device_context.VSSetShader(vertex_shader_.Get(), nullptr, 0);
+            device_context.UpdateSubresource(vs_constant_buffer0_.Get(), 0, nullptr, &vs_cb0, 0, 0);
+            device_context.VSSetConstantBuffers(0, 1, vs_constant_buffer0_.GetAddressOf());
+            // Pixel Shader.
+            device_context.PSSetShader(pixel_shader_.Get(), nullptr, 0);
+            device_context.UpdateSubresource(ps_constant_buffer0_.Get(), 0, nullptr, &ps_cb0, 0, 0);
+            device_context.PSSetConstantBuffers(0, 1, ps_constant_buffer0_.GetAddressOf());
+            if (ID3D11ShaderResourceView* ps_texture0 = get_texture(render_mesh.ps_texture0_id))
+            {
+                device_context.PSSetShaderResources(0, 1, &ps_texture0);
+                device_context.PSSetSamplers(0, 1, sampler_linear_.GetAddressOf());
+            }
+
+            // Actual draw call.
+            device_context.DrawIndexed(render_mesh.indices_count, 0, 0);
+        }
+    }
+
+    ID3D11ShaderResourceView* get_texture(std::uint32_t id) const
     {
         for (const RenderTexture& texture : textures)
         {
             if (texture.texture_id == id)
             {
                 Panic(texture.texture_view);
-                return texture.texture_view;
+                return texture.texture_view.Get();
             }
         }
         return nullptr;
     }
 };
-
-struct VSConstantBuffer0
-{
-    XMMATRIX world;
-    XMMATRIX view;
-    XMMATRIX projection;
-};
-
-struct PSConstantBuffer0
-{
-    XMVECTOR light_color;
-    XMVECTOR light_position;
-    XMVECTOR viewer_position;
-};
+#pragma warning(pop)
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
@@ -296,24 +413,21 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         const float height = HIWORD(lparam);
         game.aspect_ratio_ = (width / static_cast<FLOAT>(height));
         game.device_context_->OMSetRenderTargets(0, 0, 0);
-        game.render_target_view_->Release();
-        game.render_target_view_ = nullptr;
+        game.render_target_view_.Reset();
         // Preserve the existing buffer count and format.
         HRESULT hr = game.swap_chain_->ResizeBuffers(0, UINT(width), UINT(height), DXGI_FORMAT_UNKNOWN, 0);
         Panic(SUCCEEDED(hr));
 
         // Get buffer and create a render-target-view.
-        ID3D11Texture2D* buffer = nullptr;
-        hr = game.swap_chain_->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&buffer);
+        ComPtr<ID3D11Texture2D> buffer;
+        hr = game.swap_chain_->GetBuffer(0, __uuidof(ID3D11Texture2D), &buffer);
         Panic(SUCCEEDED(hr));
 
-        hr = game.device_->CreateRenderTargetView(buffer , nullptr, &game.render_target_view_);
+        hr = game.device_->CreateRenderTargetView(buffer.Get() , nullptr, &game.render_target_view_);
         Panic(SUCCEEDED(hr));
-        buffer->Release();
-        buffer = nullptr;
+        buffer.Reset();
 
-        game.depth_buffer_->Release();
-        game.depth_buffer_ = nullptr;
+        game.depth_buffer_.Reset();
 
         D3D11_TEXTURE2D_DESC depthTextureDesc{};
         depthTextureDesc.Width = UINT(width);
@@ -324,7 +438,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         depthTextureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         depthTextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
-        ID3D11Texture2D* depth_stencil_texture = nullptr;
+        ComPtr<ID3D11Texture2D> depth_stencil_texture;
         hr = game.device_->CreateTexture2D(&depthTextureDesc, nullptr, &depth_stencil_texture);
         Panic(SUCCEEDED(hr));
 
@@ -332,11 +446,11 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         dsvDesc.Format = depthTextureDesc.Format;
         dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
 
-        hr = game.device_->CreateDepthStencilView(depth_stencil_texture, &dsvDesc, &game.depth_buffer_);
-        depth_stencil_texture->Release();
+        hr = game.device_->CreateDepthStencilView(depth_stencil_texture.Get(), &dsvDesc, &game.depth_buffer_);
+        depth_stencil_texture.Reset();
         Panic(SUCCEEDED(hr));
 
-        game.device_context_->OMSetRenderTargets(1, &game.render_target_view_, game.depth_buffer_);
+        game.device_context_->OMSetRenderTargets(1, game.render_target_view_.GetAddressOf(), game.depth_buffer_.Get());
 
         // Set up the viewport.
         game.vp_.Width = static_cast<FLOAT>(width);
@@ -460,12 +574,12 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     Panic(SUCCEEDED(hr));
 
     // Create a render target view.
-    ID3D11Texture2D* back_buffer = nullptr;
-    hr = game.swap_chain_->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<LPVOID*>(&back_buffer));
+    ComPtr<ID3D11Texture2D> back_buffer;
+    hr = game.swap_chain_->GetBuffer(0, __uuidof(ID3D11Texture2D), &back_buffer);
     Panic(SUCCEEDED(hr));
-    hr = game.device_->CreateRenderTargetView(back_buffer, nullptr, &game.render_target_view_);
+    hr = game.device_->CreateRenderTargetView(back_buffer.Get(), nullptr, &game.render_target_view_);
     Panic(SUCCEEDED(hr));
-    back_buffer->Release();
+    back_buffer.Reset();
 
     // Setup the viewport.
     game.vp_.Width = static_cast<FLOAT>(client_width);
@@ -474,51 +588,6 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     game.vp_.MaxDepth = 1.0f;
     game.vp_.TopLeftX = 0;
     game.vp_.TopLeftY = 0;
-
-    // VS & IA.
-    ID3D11VertexShader* vertex_shader = nullptr;
-    hr = game.device_->CreateVertexShader(
-        k_vs_basic_phong_lighting
-        , sizeof(k_vs_basic_phong_lighting)
-        , nullptr
-        , &vertex_shader);
-    Panic(SUCCEEDED(hr));
-
-    ID3D11InputLayout* vertex_layout = nullptr;
-    hr = game.device_->CreateInputLayout(
-        layout
-        , _countof(layout)
-        , k_vs_basic_phong_lighting
-        , sizeof(k_vs_basic_phong_lighting)
-        , &vertex_layout);
-    Panic(SUCCEEDED(hr));
-
-    // PS.
-    ID3D11PixelShader* pixel_shader = nullptr;
-    hr = game.device_->CreatePixelShader(
-        k_ps_basic_phong_lighting
-        , sizeof(k_ps_basic_phong_lighting)
-        , nullptr, &pixel_shader);
-    Panic(SUCCEEDED(hr));
-
-    // Create the constant buffer for VS.
-    D3D11_BUFFER_DESC vs_bd{};
-    vs_bd.Usage = D3D11_USAGE_DEFAULT;
-    vs_bd.ByteWidth = sizeof(VSConstantBuffer0);
-    vs_bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    vs_bd.CPUAccessFlags = 0;
-    ID3D11Buffer* vs_constant_buffer0 = nullptr;
-    hr = game.device_->CreateBuffer(&vs_bd, nullptr, &vs_constant_buffer0);
-    Panic(SUCCEEDED(hr));
-
-    D3D11_BUFFER_DESC ps_bd{};
-    ps_bd.Usage = D3D11_USAGE_DEFAULT;
-    ps_bd.ByteWidth = sizeof(PSConstantBuffer0);
-    ps_bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    ps_bd.CPUAccessFlags = 0;
-    ID3D11Buffer* ps_constant_buffer0 = nullptr;
-    hr = game.device_->CreateBuffer(&ps_bd, nullptr, &ps_constant_buffer0);
-    Panic(SUCCEEDED(hr));
 
     // Z-test/buffer.
     D3D11_TEXTURE2D_DESC dept_texture_desc{};
@@ -530,7 +599,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     dept_texture_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     dept_texture_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
-    ID3D11Texture2D* depth_stencil_texture = nullptr;
+    ComPtr<ID3D11Texture2D> depth_stencil_texture;
     hr = game.device_->CreateTexture2D(&dept_texture_desc, nullptr, &depth_stencil_texture);
     Panic(SUCCEEDED(hr));
 
@@ -538,8 +607,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     dsvDesc.Format = dept_texture_desc.Format;
     dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
 
-    hr = game.device_->CreateDepthStencilView(depth_stencil_texture, &dsvDesc, &game.depth_buffer_);
-    depth_stencil_texture->Release();
+    hr = game.device_->CreateDepthStencilView(depth_stencil_texture.Get(), &dsvDesc, &game.depth_buffer_);
+    depth_stencil_texture.Reset();
     Panic(SUCCEEDED(hr));
 
     // Ability to enable/disable wireframe.
@@ -552,34 +621,25 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     wfd.CullMode = D3D11_CULL_NONE;
     wfd.DepthClipEnable = TRUE;
     wfd.AntialiasedLineEnable = TRUE;
-    ID3D11RasterizerState* rasterizerState = nullptr;
-    hr = game.device_->CreateRasterizerState(&wfd, &rasterizerState);
+    ComPtr<ID3D11RasterizerState> rasterizer_state;
+    hr = game.device_->CreateRasterizerState(&wfd, &rasterizer_state);
     Panic(SUCCEEDED(hr));
 
-    // Create the sample state.
-    // Texture sampling for PS.
-    D3D11_SAMPLER_DESC sampler_desc{};
-    sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-    sampler_desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampler_desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-    sampler_desc.MinLOD = 0;
-    sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
-    ID3D11SamplerState* sampler_linear = NULL;
-    hr = game.device_->CreateSamplerState(&sampler_desc, &sampler_linear);
-    Panic(SUCCEEDED(hr));
-
-    RenderModel render_model = RenderModel::make(*game.device_, model);
-    RenderLines render_lines = RenderLines::make(*game.device_);
+    RenderModel render_model = RenderModel::make(*game.device_.Get(), model);
+    RenderLines render_lines = RenderLines::make(game.device_);
     render_lines.add_bbox(BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 1.f, 1.f)));
+    // Positive World X direction. RED.
+    render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 0.f, 0.f), XMFLOAT3(1.f, 0.f, 0.f));
+    // Positive World Y direction. GREEN.
+    render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f));
+    // Positive World Z direction. BLUE.
+    render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT3(0.f, 0.f, 1.f));
 
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
-    XMMATRIX world = XMMatrixIdentity();
     XMMATRIX view = XMMatrixIdentity();
 
-    const DWORD dwTimeStart = ::GetTickCount();
+    const DWORD start_time = ::GetTickCount();
 
     // Main message loop
     MSG msg{};
@@ -621,114 +681,61 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             , game.aspect_ratio_
             , 0.01f    // NearZ
             , 100.0f); // FarZ
-        const float t = (::GetTickCount() - dwTimeStart) / 1000.0f;
+        const float t = (::GetTickCount() - start_time) / 1000.0f;
 
         view = XMMatrixLookAtLH(game.camera_position_
             , game.camera_position_ + game.camera_front_dir_
             , game.camera_up_dir_);
 
         const float scale = 2.f;
-        world = XMMatrixScaling(scale, scale, scale)
+        render_model.world = XMMatrixIdentity()
+            * XMMatrixScaling(scale, scale, scale)
             * XMMatrixRotationY(2.5);
-
 #if (XX_OBJECT_ROTATE())
 #if (XX_HAS_TEXTURE_COORDS())
-        world = (world * XMMatrixRotationX(t));
+        render_model.world *= XMMatrixRotationX(t);
 #else
-        world = (world * XMMatrixRotationY(t));
+        render_model.world *= XMMatrixRotationY(t);
 #endif
 #endif
-        // world = world * XMMatrixTranslation(-2.f, 0.f, 0.f);
+        render_model.world *= XMMatrixTranslation(-2.f, 0.f, 0.f);
+
+        render_model.light_color = 20 * XMVectorSet(1.f, 1.f, 1.f, 1.0);
+        render_model.viewer_position = game.camera_position_;
+#if (1)
+        // render_model.light_position = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
+        render_model.light_position = game.camera_position_;
+#else
+        const float radius = 20.0f;
+        const float cam_x = (sinf(t) * radius);
+        const float cam_z = (cosf(t) * radius);
+        render_model.light_position = XMVectorSet(cam_x, 0.0f, cam_z, 0.0f);
+#endif
 
         // Clear.
         const float c_clear_color[4] = {0.f, 0.f, 0.0f, 1.0f};
-        game.device_context_->ClearRenderTargetView(game.render_target_view_, c_clear_color);
-        game.device_context_->ClearDepthStencilView(game.depth_buffer_
+        game.device_context_->ClearRenderTargetView(game.render_target_view_.Get(), c_clear_color);
+        game.device_context_->ClearDepthStencilView(game.depth_buffer_.Get()
             , D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-        VSConstantBuffer0 vs_cb0;
-        vs_cb0.world = XMMatrixTranspose(world);
-        vs_cb0.view = XMMatrixTranspose(view);
-        vs_cb0.projection = XMMatrixTranspose(projection);
+        // Output Merger.
+        game.device_context_->OMSetRenderTargets(1, game.render_target_view_.GetAddressOf(), game.depth_buffer_.Get());
+        // Rasterizer Stage.
+        game.device_context_->RSSetState(rasterizer_state.Get());
+        game.device_context_->RSSetViewports(1, &game.vp_);
 
-        PSConstantBuffer0 ps_cb0;
-        ps_cb0.light_color = 20 * XMVectorSet(1.f, 1.f, 1.f, 1.0);
-        ps_cb0.viewer_position = game.camera_position_;
-#if (0)
-        ps_cb0.light_position = game.camera_position_;
-#else
-#if (1)
-        const float radius = 20.0f;
-        const float camX = sinf(t) * radius;
-        const float camZ = cosf(t) * radius - 15.f;
-        ps_cb0.light_position = XMVectorSet(camX, 0.0f, camZ, 0.0f);
-#else
-        ps_cb0.light_position = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
-#endif
-#endif
-        { // Render lines.
-            RenderLines::LineVSConstantBuffer constants;
-            constants.view = XMMatrixTranspose(view);
-            constants.projection = XMMatrixTranspose(projection);
-            render_lines.render(
-                *game.device_context_
-                , *game.render_target_view_
-                , game.vp_
-                , constants);
-        }
-
-#if (1)
-        // Render model.
-        for (const RenderMesh& render_mesh : render_model.meshes)
-        {
-            UINT stride = sizeof(Vertex);
-            UINT offset = 0;
-            // Input Assembler.
-            game.device_context_->IASetVertexBuffers(0, 1, &render_mesh.vertex_buffer, &stride, &offset);
-            game.device_context_->IASetIndexBuffer(render_mesh.index_buffer, GetIndexBufferFormat(), 0);
-            game.device_context_->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            game.device_context_->IASetInputLayout(vertex_layout);
-            // Vertex Shader.
-            game.device_context_->VSSetShader(vertex_shader, nullptr, 0);
-            game.device_context_->UpdateSubresource(vs_constant_buffer0, 0, nullptr, &vs_cb0, 0, 0);
-            game.device_context_->VSSetConstantBuffers(0, 1, &vs_constant_buffer0);
-            // Rasterizer Stage.
-            game.device_context_->RSSetState(rasterizerState);
-            game.device_context_->RSSetViewports(1, &game.vp_);
-            // Pixel Shader.
-            game.device_context_->PSSetShader(pixel_shader, nullptr, 0);
-            game.device_context_->UpdateSubresource(ps_constant_buffer0, 0, nullptr, &ps_cb0, 0, 0);
-            game.device_context_->PSSetConstantBuffers(0, 1, &ps_constant_buffer0);
-            if (ID3D11ShaderResourceView* ps_texture0 = render_model.get_texture(render_mesh.ps_texture0_id))
-            {
-                game.device_context_->PSSetShaderResources(0, 1, &ps_texture0);
-            }
-            game.device_context_->PSSetSamplers(0, 1, &sampler_linear);
-            // Output Merger.
-            game.device_context_->OMSetRenderTargets(1, &game.render_target_view_, game.depth_buffer_);
-
-            // Actual draw call.
-            game.device_context_->DrawIndexed(render_mesh.indices_count, 0, 0);
-        }
-#endif
+        render_lines.render(*game.device_context_.Get()
+            , XMMatrixTranspose(view)
+            , XMMatrixTranspose(projection));
+        render_model.render(*game.device_context_.Get()
+            , XMMatrixTranspose(view)
+            , XMMatrixTranspose(projection));
 
         // Present.
         const UINT SyncInterval = 1; // Synchronize presentation after single vertical blank.
-        const HRESULT ok = game.swap_chain_->Present(SyncInterval, 0);
-        Panic(SUCCEEDED(ok));
+        hr = game.swap_chain_->Present(SyncInterval, 0);
+        Panic(SUCCEEDED(hr));
     }
-
-    game.device_context_->ClearState();
-    game.render_target_view_->Release();
-    game.swap_chain_->Release();
-    game.device_context_->Release();
-    game.device_->Release();
-    vertex_layout->Release();
-    vertex_shader->Release();
-    pixel_shader->Release();
-    vs_constant_buffer0->Release();
-    rasterizerState->Release();
-    game.depth_buffer_->Release();
 
     return 0;
 }

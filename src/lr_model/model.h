@@ -6,7 +6,7 @@
 
 #include <cstdint>
 
-#define XX_HAS_TEXTURE_COORDS() 1
+#define XX_HAS_TEXTURE_COORDS() 0
 #define XX_HAS_NORMALS() 1
 
 // RGBA, 8 bits per channel.

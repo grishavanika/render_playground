@@ -12,7 +12,7 @@ cbuffer PSConstantBuffer0 : register(b0)
 
 float4 main_ps(VS_OUTPUT input) : SV_Target
 {
-#if (1) // If diffuse texture present.
+#if (0) // If diffuse texture present.
     float3 object_color = (float3)TextureDiffuse.Sample(SamplerLinear, input.Tex);
 #else   // 
     float3 object_color = float3(1.0, 1.0, 1.0);

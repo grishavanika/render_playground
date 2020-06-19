@@ -4,6 +4,11 @@
 #include <cstdlib>
 #include <cassert>
 
+#include <wrl/client.h>
+
+template<typename T>
+using ComPtr = Microsoft::WRL::ComPtr<T>;
+
 inline void Panic(bool condition)
 {
     if (!condition)
