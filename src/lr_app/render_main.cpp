@@ -372,7 +372,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         const float x = cosf(yaw) * cosf(pitch);
         const float y = sinf(pitch);
-        const float z = sinf(yaw) * cosf(DegreesToRadians(game.camera_pitch_degrees_));
+        const float z = sinf(yaw) * cosf(pitch);
 
         game.camera_front_dir_ = XMVector3Normalize(XMVectorSet(x, y, z, 0.f));
         game.camera_right_dir_ = XMVector3Normalize(XMVector3Cross(game.camera_front_dir_, game.camera_up_dir_));

@@ -11,7 +11,7 @@ include(tools/cmake/clang_msvc_integration.cmake)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 detect_compilers()
-set_cpp17_standard()
+set_cpp_latest_standard()
 
 # Remove unneeded configurations
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
@@ -31,10 +31,10 @@ add_subdirectory(third_party)
 
 # libraries
 add_subdirectory(src/lr_model)
-
 # exe
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/tools/cmake")
 add_subdirectory(src/lr_app)
 add_subdirectory(src/lr_export)
 
 # tests
+
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "lr_app")

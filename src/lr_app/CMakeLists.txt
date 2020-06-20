@@ -1,9 +1,5 @@
 set(exe_name lr_app)
 
-# TODO: wrap third-party dependencies into CMake's targets and move
-# to third_party folder.
-find_package(DirectX11 REQUIRED)
-
 set(shaders_files
     shaders/vs_basic_phong_lighting.hlsl
     shaders/ps_basic_phong_lighting.hlsl
@@ -60,9 +56,8 @@ set_all_warnings(${exe_name} PRIVATE)
 target_link_libraries(${exe_name} lr_model)
 
 # Generated shaders.
-target_include_directories(${exe_name} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-# DX11.
-target_include_directories(${exe_name} PUBLIC ${DirectX11_INCLUDE_DIRS})
-target_link_libraries(${exe_name} ${DirectX11_LIBRARY})
-# ImGui
+target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+# Third-party.
+target_link_libraries(${exe_name} DX11_Integrated)
 target_link_libraries(${exe_name} ImGui_Integrated)
