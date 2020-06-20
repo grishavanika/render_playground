@@ -1,7 +1,43 @@
 #pragma once
 #include "vertex.h"
 
-#include <span>
+#if (__has_include(<span>))
+#  include <span>
+#else
+// Narrow case only to MinGW to control explicitly where this hack exists
+#if (defined(__MINGW32__) || defined(__MINGW64__))
+#include <cstddef>
+// Introducing std:: intentionally. This should be cut anyway once MinGW gains <span>
+namespace std
+{
+    template<typename T>
+    class span
+    {
+    public:
+        constexpr span() noexcept
+            : span(nullptr, 0)
+        {
+        }
+
+        constexpr span(T* ptr, std::size_t count) noexcept
+            : ptr_(ptr)
+            , count_(count)
+        {
+        }
+
+        constexpr T& operator[](std::size_t i) const noexcept
+        {
+            return ptr_[i];
+        }
+
+    private:
+        T* ptr_;
+        std::size_t count_;
+    };
+}
+#endif
+#endif
+
 #include <type_traits>
 
 #include <cstdint>

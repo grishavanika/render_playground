@@ -48,6 +48,10 @@ target_compile_definitions(${exe_name} PRIVATE UNICODE _UNICODE)
 if (${gcc_on_msvc})
     # Make GCC aware about wmain()
     set_target_properties(${exe_name} PROPERTIES LINK_FLAGS -municode)
+
+    target_compile_options(${exe_name} PRIVATE
+        -Wno-unknown-pragmas
+        )
 endif()
 
 set_all_warnings(${exe_name} PRIVATE)
