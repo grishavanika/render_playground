@@ -1,5 +1,7 @@
 #include "vertex.h"
 
+extern void CubeModel_Predefined(); // To make Clang happy.
+
 void CubeModel_Predefined()
 {
     const Vertex vertices_raw[] =

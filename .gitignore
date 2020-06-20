@@ -3,4 +3,5 @@ third_party/deps/*
 Debug/
 Release/
 x64/
-build/
+build*/
+

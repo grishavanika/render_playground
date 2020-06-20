@@ -103,7 +103,7 @@ void RenderLines::add_bbox(const DirectX::BoundingBox& box
     };
 
     DirectX::XMFLOAT3 points[std::size(indices)];
-    for (int i = 0; i < std::size(indices); i++)
+    for (std::size_t i = 0; i < std::size(indices); ++i)
     {
         points[i] = corners[indices[i]];
     }

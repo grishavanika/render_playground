@@ -34,12 +34,34 @@ else ()
 
     target_link_libraries(Assimp_Integrated INTERFACE assimp)
 
-    target_compile_options(assimp PUBLIC
-        # The std::iterator class template is deprecated
-        /wd4996
-        )
- 
+    if (MSVC)
+        target_compile_options(assimp PUBLIC
+            # The std::iterator class template is deprecated
+            /wd4996
+            )
+    endif ()
+
+    if (clang_on_msvc)
+        target_compile_options(assimp PUBLIC
+            -Wno-pragma-pack
+            -Wno-unused-variable
+            -Wno-unused-value
+            -Wno-microsoft-enum-value
+            -Wno-documentation
+            -Wno-documentation-unknown-command
+            -Wno-switch-enum
+            -Wno-implicit-float-conversion
+            )
+
+        target_compile_options(zlibstatic PUBLIC
+            -Wno-unused-parameter
+            )
+    endif ()
+
     set_target_properties(assimp PROPERTIES FOLDER third_party)
     set_target_properties(IrrXML PROPERTIES FOLDER third_party)
-    set_target_properties(zlibstatic PROPERTIES FOLDER third_party)
+
+    if (NOT (${gcc} OR ${clang}))
+        set_target_properties(zlibstatic PROPERTIES FOLDER third_party)
+    endif ()
 endif ()

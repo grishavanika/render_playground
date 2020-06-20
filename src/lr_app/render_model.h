@@ -5,7 +5,7 @@
 #include <d3d11.h>
 #pragma warning(pop)
 
-#include <directxmath.h>
+#include <DirectXMath.h>
 
 #include <vector>
 

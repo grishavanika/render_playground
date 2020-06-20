@@ -5,7 +5,7 @@
 #include <d3d11.h>
 #pragma warning(pop)
 #include <DirectXMath.h>
-#include <Directxcollision.h>
+#include <DirectXCollision.h>
 
 #include <vector>
 #include <span>

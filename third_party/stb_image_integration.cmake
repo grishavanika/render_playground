@@ -20,3 +20,12 @@ else ()
     get_filename_component(dir ${stb_image_header} DIRECTORY)
     target_include_directories(stb_image_Integrated INTERFACE "${dir}")
 endif ()
+
+if (clang_on_msvc)
+    target_compile_options(stb_image_Integrated INTERFACE
+        -Wno-disabled-macro-expansion
+        -Wno-cast-align
+        -Wno-extra-semi-stmt
+        -Wno-implicit-int-conversion
+        )
+endif ()

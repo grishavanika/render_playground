@@ -54,7 +54,7 @@ struct AssimpModel
 
 // Model's loading with Assimp comes from learnopengl.com:
 // https://learnopengl.com/code_viewer_gh.php?code=includes/learnopengl/model.h
-AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
+static AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
 {
     static_assert(std::is_same_v<float, ai_real>);
 
@@ -118,7 +118,7 @@ AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
         for (unsigned j = 0; j < mesh.mFaces[i].mNumIndices; ++j)
         {
             const unsigned int v = mesh.mFaces[i].mIndices[j];
-            Panic(unsigned int(std::numeric_limits<Index>::max()) >= v);
+            // Panic(static_cast<unsigned int>(std::numeric_limits<Index>::max()) >= v);
             mesh_data.indices.push_back(Index(v));
         }
     }
@@ -146,7 +146,7 @@ AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
 }
 
 template<typename F>
-void Assimp_ProcessNode(const aiScene& scene, const aiNode& node, F on_new_mesh)
+static void Assimp_ProcessNode(const aiScene& scene, const aiNode& node, F on_new_mesh)
 {
     for (unsigned int i = 0; i < node.mNumMeshes; ++i)
     {
@@ -159,7 +159,7 @@ void Assimp_ProcessNode(const aiScene& scene, const aiNode& node, F on_new_mesh)
     }
 }
 
-AssimpModel Assimp_Load(fs::path file_path)
+static AssimpModel Assimp_Load(fs::path file_path)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(file_path.string().c_str()

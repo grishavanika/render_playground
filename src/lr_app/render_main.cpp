@@ -1,8 +1,6 @@
 #define NOMINMAX
-#include <windows.h>
-
 #include <Windows.h>
-#include <Windowsx.h>
+#include <windowsx.h>
 #include <tchar.h>
 
 #pragma warning(push)
@@ -11,7 +9,7 @@
 #include <d3d11.h>
 #pragma warning(pop)
 
-#include <directxmath.h>
+#include <DirectXMath.h>
 using namespace DirectX;
 
 // Integration of ImGui comes from
@@ -109,7 +107,7 @@ struct GameState
 };
 #pragma warning(pop)
 
-void TickInput(GameState& game)
+static void TickInput(GameState& game)
 {
     if (game.keys_down_.contains(0x57)) // W
     {
@@ -142,7 +140,7 @@ void TickInput(GameState& game)
     }
 }
 
-void TickImGui(GameState& game)
+static void TickImGui(GameState& game)
 {
     if (game.imgui_.show_demo_window)
     {
@@ -315,8 +313,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         const LONG x_delta = raw.data.mouse.lLastX;
         const LONG y_delta = raw.data.mouse.lLastY;
 
-        const float d_yaw = (x_delta * game.camera_rotation_mouse_sensitivity_);
-        const float d_pitch = (y_delta * game.camera_rotation_mouse_sensitivity_);
+        const float d_yaw = (float(x_delta) * game.camera_rotation_mouse_sensitivity_);
+        const float d_pitch = (float(y_delta) * game.camera_rotation_mouse_sensitivity_);
 
         // https://learnopengl.com/Getting-started/Camera
         game.camera_yaw_degrees_ -= d_yaw;
@@ -364,7 +362,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     Panic(!!::GetClientRect(window.wnd(), &client_rect));
     const UINT client_width = (client_rect.right - client_rect.left);
     const UINT client_height = (client_rect.bottom - client_rect.top);
-    game.aspect_ratio_ = (client_width / static_cast<FLOAT>(client_height));
+    game.aspect_ratio_ = (float(client_width) / float(client_height));
     
     { // Calculate default camera orientation from initial angles.
         const float yaw = DegreesToRadians(game.camera_yaw_degrees_);
@@ -528,7 +526,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             , game.aspect_ratio_
             , 0.01f    // NearZ
             , 100.0f); // FarZ
-        const float t = (::GetTickCount() - start_time) / 1000.0f;
+        const float t = float(::GetTickCount() - start_time) / 1000.f;
 
         view = XMMatrixLookAtLH(game.camera_position_
             , game.camera_position_ + game.camera_front_dir_
