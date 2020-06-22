@@ -34,9 +34,8 @@ struct RenderLines
     ComPtr<ID3D11PixelShader> pixel_shader_ = nullptr;
     ComPtr<ID3D11Buffer> vertex_buffer_ = nullptr;
     ComPtr<ID3D11Buffer> constant_buffer_ = nullptr;
-    ShadersRef shaders_;
 
-    static RenderLines make(const ComPtr<ID3D11Device>& device, const ShadersRef& shaders);
+    static RenderLines make(const ComPtr<ID3D11Device>& device);
 
     void add_line(const DirectX::XMFLOAT3& p0
         , const DirectX::XMFLOAT3& p1
@@ -48,5 +47,5 @@ struct RenderLines
 
     void render(ID3D11DeviceContext& device_context
         , const DirectX::XMMATRIX& view_transposed
-        , const DirectX::XMMATRIX& projection_transposed);
+        , const DirectX::XMMATRIX& projection_transposed) const;
 };

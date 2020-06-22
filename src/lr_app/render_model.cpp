@@ -99,25 +99,10 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
     return render;
 }
 
-/*static*/ RenderModel RenderModel::make(ID3D11Device& device, const Model& model
-    , const ShadersRef& shaders)
+/*static*/ RenderModel RenderModel::make(ID3D11Device& device, const Model& model)
 {
     RenderModel render{};
     render.model = &model;
-    render.shaders_ = shaders;
-
-    shaders.compiler->create_vs(device
-        , *shaders.vs_shader
-        , render.vertex_shader_
-        , render.vertex_layout_);
-    shaders.compiler->create_ps(device
-        , *shaders.ps_shader
-        , render.pixel_shader_);
-    if (shaders.watch)
-    {
-        shaders.watch->recompile_on_change(*shaders.vs_shader);
-        shaders.watch->recompile_on_change(*shaders.ps_shader);
-    }
 
     // Create the constant buffer for VS.
     D3D11_BUFFER_DESC vs_bd{};
@@ -164,7 +149,7 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
 
 void RenderModel::render(ID3D11DeviceContext& device_context
     , const DirectX::XMMATRIX& view_transposed
-    , const DirectX::XMMATRIX& projection_transposed)
+    , const DirectX::XMMATRIX& projection_transposed) const
 {
     // Parameters for VS.
     VSConstantBuffer0 vs_cb0;
@@ -177,24 +162,6 @@ void RenderModel::render(ID3D11DeviceContext& device_context
     ps_cb0.light_color = light_color;
     ps_cb0.viewer_position = viewer_position;
     ps_cb0.light_position = light_position;
-
-    if (shaders_.watch)
-    {
-        ShadersWatch::ShaderPatch patch = shaders_.watch->fetch_latest_version(*shaders_.vs_shader);
-        if (patch.shader_info)
-        {
-            Panic(patch.vs_shader);
-            Panic(patch.vs_layout);
-            vertex_shader_ = patch.vs_shader;
-            vertex_layout_ = patch.vs_layout;
-        }
-        patch = shaders_.watch->fetch_latest_version(*shaders_.ps_shader);
-        if (patch.shader_info)
-        {
-            Panic(patch.ps_shader);
-            pixel_shader_ = patch.ps_shader;
-        }
-    }
 
     for (const RenderMesh& render_mesh : meshes)
     {

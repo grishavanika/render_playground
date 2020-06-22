@@ -8,25 +8,10 @@ struct LineVSConstantBuffer
     DirectX::XMMATRIX projection;
 };
 
-/*static*/ RenderLines RenderLines::make(const ComPtr<ID3D11Device>& device
-    , const ShadersRef& shaders)
+/*static*/ RenderLines RenderLines::make(const ComPtr<ID3D11Device>& device)
 {
     RenderLines render{};
     render.device_ = device;
-    render.shaders_ = shaders;
-
-    shaders.compiler->create_vs(*device.Get()
-        , *shaders.vs_shader
-        , render.vertex_shader_
-        , render.vertex_layout_);
-    shaders.compiler->create_ps(*device.Get()
-        , *shaders.ps_shader
-        , render.pixel_shader_);
-    if (shaders.watch)
-    {
-        shaders.watch->recompile_on_change(*shaders.vs_shader);
-        shaders.watch->recompile_on_change(*shaders.ps_shader);
-    }
 
     D3D11_BUFFER_DESC desc{};
 #if (0) // Will be created on resize.
@@ -110,31 +95,13 @@ void RenderLines::add_lines(const std::span<const DirectX::XMFLOAT3>& points
 
 void RenderLines::render(ID3D11DeviceContext& device_context
     , const DirectX::XMMATRIX& view_transposed
-    , const DirectX::XMMATRIX& projection_transposed)
+    , const DirectX::XMMATRIX& projection_transposed) const
 {
     if (vertices_.empty())
     {
         return;
     }
     Panic(device_);
-
-    if (shaders_.watch)
-    {
-        ShadersWatch::ShaderPatch patch = shaders_.watch->fetch_latest_version(*shaders_.vs_shader);
-        if (patch.shader_info)
-        {
-            Panic(patch.vs_shader);
-            Panic(patch.vs_layout);
-            vertex_shader_ = patch.vs_shader;
-            vertex_layout_ = patch.vs_layout;
-        }
-        patch = shaders_.watch->fetch_latest_version(*shaders_.ps_shader);
-        if (patch.shader_info)
-        {
-            Panic(patch.ps_shader);
-            pixel_shader_ = patch.ps_shader;
-        }
-    }
 
     // Copy the CPU buffer into the GPU one.
     D3D11_MAPPED_SUBRESOURCE data;

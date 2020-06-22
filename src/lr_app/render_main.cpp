@@ -183,6 +183,19 @@ static void TickImGui(GameState& game)
 #  error "Build system missed to specify where shaders are."
 #endif
 
+struct VSShader
+{
+    const ShaderInfo* vs_info;
+    ComPtr<ID3D11VertexShader>* vs;
+    ComPtr<ID3D11InputLayout>* vs_layout;
+};
+
+struct PSShader
+{
+    const ShaderInfo* ps_info;
+    ComPtr<ID3D11PixelShader>* ps;
+};
+
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
 #if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
@@ -497,23 +510,31 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
     ShadersCompiler compiler;
     ShadersWatch watch(compiler);
-    ///////////////////////////////////////////////////////////////////////////
-    const ShadersRef model_shaders =
+
+    RenderModel render_model = RenderModel::make(*game.device_.Get(), model);
+    RenderLines render_lines = RenderLines::make(game.device_);
+    const VSShader vs_shaders[] =
     {
-        .vs_shader = &c_vs_basic_phong,
-        .ps_shader = &c_ps_basic_phong,
-        .compiler  = &compiler,
-        .watch     = &watch
+        {&c_vs_basic_phong, std::addressof(render_model.vertex_shader_), std::addressof(render_model.vertex_layout_)},
+        {&c_vs_lines,       std::addressof(render_lines.vertex_shader_), std::addressof(render_lines.vertex_layout_)},
     };
-    RenderModel render_model = RenderModel::make(*game.device_.Get(), model, model_shaders);
-    const ShadersRef lines_shaders =
+    const PSShader ps_shaders[] =
     {
-        .vs_shader = &c_vs_lines,
-        .ps_shader = &c_ps_lines,
-        .compiler  = &compiler,
-        .watch     = &watch
+        {&c_ps_basic_phong, std::addressof(render_model.pixel_shader_)},
+        {&c_ps_lines,       std::addressof(render_lines.pixel_shader_)},
     };
-    RenderLines render_lines = RenderLines::make(game.device_, lines_shaders);
+
+    for (const VSShader& vs : vs_shaders)
+    {
+        compiler.create_vs(*game.device_.Get(), *vs.vs_info, *vs.vs, *vs.vs_layout);
+        watch.watch_changes_to(*vs.vs_info);
+    }
+    for (const PSShader& ps : ps_shaders)
+    {
+        compiler.create_ps(*game.device_.Get(), *ps.ps_info, *ps.ps);
+        watch.watch_changes_to(*ps.ps_info);
+    }
+
     render_lines.add_bbox(BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 1.f, 1.f)));
     // Positive World X direction. RED.
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 0.f, 0.f), XMFLOAT3(1.f, 0.f, 0.f));
@@ -521,8 +542,6 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f));
     // Positive World Z direction. BLUE.
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT3(0.f, 0.f, 1.f));
-
-    watch.start_all();
 
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
@@ -541,7 +560,29 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             continue;
         }
 
-        watch.collect_changes(*game.device_.Get());
+        if (watch.collect_changes(*game.device_.Get()) > 0)
+        {
+            for (const VSShader& vs : vs_shaders)
+            {
+                auto patch = watch.fetch_latest(*vs.vs_info);
+                if (patch.vs_shader)
+                {
+                    *vs.vs = std::move(patch.vs_shader);
+                    *vs.vs_layout = std::move(patch.vs_layout);
+                    Panic(*vs.vs);
+                    Panic(*vs.vs_layout);
+                }
+            }
+            for (const PSShader& ps : ps_shaders)
+            {
+                auto patch = watch.fetch_latest(*ps.ps_info);
+                if (patch.ps_shader)
+                {
+                    *ps.ps = std::move(patch.ps_shader);
+                    Panic(*ps.ps);
+                }
+            }
+        }
 
         // Start the Dear ImGui frame.
         ImGui_ImplDX11_NewFrame();

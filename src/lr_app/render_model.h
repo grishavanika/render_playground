@@ -13,8 +13,6 @@
 #include "model.h"
 #include "shaders_compiler.h"
 
-struct ShadersRef;
-
 struct RenderMesh
 {
     ComPtr<ID3D11Buffer> vertex_buffer;
@@ -66,8 +64,6 @@ struct RenderModel
     ComPtr<ID3D11Buffer> ps_constant_buffer0_;
     ComPtr<ID3D11SamplerState> sampler_linear_;
 
-    ShadersRef shaders_;
-
     // Tweak whole model position & orientation.
     DirectX::XMMATRIX world;
 
@@ -76,11 +72,10 @@ struct RenderModel
     DirectX::XMVECTOR light_position;
     DirectX::XMVECTOR viewer_position;
 
-    static RenderModel make(ID3D11Device& device, const Model& model
-        , const ShadersRef& shaders);
+    static RenderModel make(ID3D11Device& device, const Model& model);
 
     void render(ID3D11DeviceContext& device_context
         , const DirectX::XMMATRIX& view_transposed
-        , const DirectX::XMMATRIX& projection_transposed);
+        , const DirectX::XMMATRIX& projection_transposed) const;
 };
 #pragma warning(pop)

@@ -44,14 +44,6 @@ struct ShaderInfo
 struct ShadersCompiler;
 struct ShadersWatch;
 
-struct ShadersRef
-{
-    const ShaderInfo* vs_shader;
-    const ShaderInfo* ps_shader;
-    ShadersCompiler* compiler;
-    ShadersWatch* watch;
-};
-
 struct ShadersCompiler
 {
     void create_vs(ID3D11Device& device
@@ -81,11 +73,10 @@ struct ShadersWatch
 
     explicit ShadersWatch(ShadersCompiler& compiler);
 
-    void recompile_on_change(const ShaderInfo& shader);
-    ShaderPatch fetch_latest_version(const ShaderInfo& shader);
+    void watch_changes_to(const ShaderInfo& shader);
+    ShaderPatch fetch_latest(const ShaderInfo& shader);
 
-    void start_all();
-    void collect_changes(ID3D11Device& device);
+    int collect_changes(ID3D11Device& device);
 
 private:
     void add_watch(const ShaderInfo& shader, const wchar_t* file);
@@ -112,8 +103,7 @@ private:
         std::wstring directory_path;
         std::vector<FileMap> files;
 
-        wi::WinHANDLE directory = nullptr;
-        DWORD buffer[16 * 1024];
+        DWORD buffer[1024];
         BufferFor<wi::DirectoryChanges> watcher_data;
 
         static std::unique_ptr<Directory> make(
@@ -121,7 +111,9 @@ private:
             , wi::IoCompletionPort& io_port
             , wi::WinULONG_PTR key);
 
-        wi::DirectoryChanges& watcher() { return *reinterpret_cast<wi::DirectoryChanges*>(&watcher_data); }
+        wi::DirectoryChanges& watcher()
+        { return *reinterpret_cast<wi::DirectoryChanges*>(&watcher_data); }
+
         ~Directory();
         Directory(const Directory&) = delete;
         Directory(Directory&&) = delete;
