@@ -31,7 +31,6 @@ set_source_files_properties(shaders/ps_lines.hlsl PROPERTIES
     VS_SHADER_VARIABLE_NAME       k_ps_lines)
 
 set(src_files
-    cube_model_hardcoded.cpp
     render_main.cpp
     render_model.cpp
     render_lines.cpp

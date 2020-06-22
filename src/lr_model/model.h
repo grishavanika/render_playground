@@ -42,7 +42,7 @@ namespace std
 
 #include <cstdint>
 
-#define XX_HAS_TEXTURE_COORDS() 0
+#define XX_HAS_TEXTURE_COORDS() 1
 #define XX_HAS_NORMALS() 1
 
 // RGBA, 8 bits per channel.
@@ -62,6 +62,7 @@ struct Mesh
     std::span<const Vertex> vertices;
     std::span<const Index> indices;
     std::uint32_t texture_diffuse_id;
+    std::uint32_t texture_normal_id;
 };
 
 struct Model
@@ -90,6 +91,7 @@ enum struct Capabilities : std::uint16_t
     Normals       = 0x1, //  + normal per vertex
     TextureCoords = 0x2, //  + 2D UV texture mapping
     TextureRGBA   = 0x4, // texture is RGBA, 8 bit per channel, sRGB now.
+    Tangents      = 0x8
 };
 
 struct Header
@@ -109,8 +111,9 @@ struct MeshData
     std::uint32_t indices_start;
     std::uint32_t indices_end;
     std::uint32_t texture_diffuse_id;
+    std::uint32_t texture_normal_id;
 };
-static_assert(sizeof(MeshData) == 20);
+static_assert(sizeof(MeshData) == 24);
 static_assert(std::is_trivial<MeshData>());
 
 constexpr std::uint32_t c_texture_channels = 4; // RGBA, 8 bit per channel.

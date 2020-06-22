@@ -19,6 +19,7 @@ struct Vertex
 {
     Vector3f position;
     Vector3f normal;
+    Vector3f tangent;
     Vector2f texture_coord; // diffuse
 };
 

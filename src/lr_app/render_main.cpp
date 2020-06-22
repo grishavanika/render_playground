@@ -538,7 +538,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         render_model.light_color = game.imgui_.get_light_color();
         render_model.viewer_position = game.camera_position_;
-#if (0)
+#if (1)
         // render_model.light_position = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
         render_model.light_position = game.camera_position_;
 #else

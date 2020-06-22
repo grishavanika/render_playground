@@ -17,7 +17,8 @@ struct RenderMesh
     ComPtr<ID3D11Buffer> vertex_buffer;
     ComPtr<ID3D11Buffer> index_buffer;
     UINT indices_count;
-    std::uint32_t ps_texture0_id;
+    std::uint32_t ps_texture_diffuse;
+    std::uint32_t ps_texture_normal;
 
     static RenderMesh make(ID3D11Device& device, const Mesh& mesh);
 };

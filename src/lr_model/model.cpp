@@ -66,6 +66,7 @@ Mesh Model::get_mesh(std::uint32_t index) const
     mesh.vertices = vertices;
     mesh.indices = indices;
     mesh.texture_diffuse_id = mesh_data.texture_diffuse_id;
+    mesh.texture_normal_id = mesh_data.texture_normal_id;
     return mesh;
 }
 
@@ -116,7 +117,7 @@ Model LoadModel(const char* filename)
     std::uint32_t needed_size = sizeof(Header);
     Panic(size > needed_size);
     const Header* header = static_cast<const Header*>(data);
-    Panic(header->version_id == 0x2);
+    Panic(header->version_id == 0x3);
 
     std::uint16_t capabilitis = std::uint16_t(Capabilities::Default);
 #if (XX_HAS_NORMALS())
@@ -125,6 +126,7 @@ Model LoadModel(const char* filename)
 #if (XX_HAS_TEXTURE_COORDS())
     capabilitis |= std::uint16_t(Capabilities::TextureCoords);
     capabilitis |= std::uint16_t(Capabilities::TextureRGBA);
+    capabilitis |= std::uint16_t(Capabilities::Tangents);
 #endif
     Panic(header->capabilitis == capabilitis);
     Panic(header->meshes_count > 0);

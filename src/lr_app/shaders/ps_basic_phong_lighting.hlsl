@@ -1,6 +1,7 @@
 #include "common_basic_phong_lighting.hlsl"
 
 Texture2D TextureDiffuse   : register(t0);
+Texture2D TextureNormal    : register(t1);
 SamplerState SamplerLinear : register(s0);
 
 cbuffer PSConstantBuffer0 : register(b0)
@@ -12,10 +13,31 @@ cbuffer PSConstantBuffer0 : register(b0)
 
 float4 main_ps(VS_OUTPUT input) : SV_Target
 {
-#if (0) // If diffuse texture present.
+#if (1) // If diffuse texture present.
     float3 object_color = (float3)TextureDiffuse.Sample(SamplerLinear, input.Tex);
+    // float3 object_color = float3(1.0, 1.0, 1.0);
+
+    float3 tangent_normal = (float3)TextureNormal.Sample(SamplerLinear, input.Tex);
+    // sRGB.
+    tangent_normal = pow(abs(tangent_normal), 1/2.2);
+
+    tangent_normal = tangent_normal * 2.0 - 1.0; // [0; 1] -> [-1; 1]
+    float3x3 TBN = float3x3(
+          normalize(input.Tangent)
+        , normalize(input.Binormal)
+        , normalize(input.Normal));
+
+    // https://stackoverflow.com/questions/16555669/hlsl-normal-mapping-matrix-multiplication
+#if (1)
+    float3 normal = mul(tangent_normal, TBN);
+#else
+    TBN = transpose(TBN);
+    float3 normal = mul(TBN, tangent_normal);
+#endif
+
 #else   // 
     float3 object_color = float3(1.0, 1.0, 1.0);
+    float3 normal = input.Normal;
 #endif
 
     // TODO: read more about Phong Model. Example:
@@ -27,10 +49,9 @@ float4 main_ps(VS_OUTPUT input) : SV_Target
     // does not depend on the actual light source (?)
     float3 ambient = ambient_strength;// * (float3)LightColor;
 
-    float3 norm      = input.Norm;
     float3 d         = (float3)LightPosition - input.WorldPos;
     float3 light_dir = normalize(d);
-    float  diff_k    = max(dot(norm, light_dir), 0.0);
+    float  diff_k    = max(dot(normal, light_dir), 0.0);
     float3 diffuse   = diff_k * (float3)LightColor;
     
     // Note: learnopengl does not do this.
@@ -39,7 +60,7 @@ float4 main_ps(VS_OUTPUT input) : SV_Target
     float specular_strength = 5;
     float shininess         = 16;
     float3 view_dir         = normalize((float3)ViewerPosition - input.WorldPos);
-    float3 reflect_dir      = reflect(-light_dir, norm);
+    float3 reflect_dir      = reflect(-light_dir, normal);
     float spec              = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
     float3 specular         = specular_strength * spec * (float3)LightColor; 
 

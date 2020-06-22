@@ -24,6 +24,15 @@ const D3D11_INPUT_ELEMENT_DESC layout[] =
         .InstanceDataStepRate = 0
     },
     {
+        .SemanticName = "tangent",
+        .SemanticIndex = 0,
+        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
+        .InputSlot = 0,
+        .AlignedByteOffset = offsetof(Vertex, tangent),
+        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+        .InstanceDataStepRate = 0
+    },
+    {
         .SemanticName = "texcoord",
         .SemanticIndex = 0,
         .Format = DXGI_FORMAT_R32G32_FLOAT,
@@ -65,7 +74,8 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
 {
     RenderMesh render{};
     render.indices_count = UINT(mesh.indices.size());
-    render.ps_texture0_id = mesh.texture_diffuse_id;
+    render.ps_texture_diffuse = mesh.texture_diffuse_id;
+    render.ps_texture_normal = mesh.texture_normal_id;
 
     D3D11_BUFFER_DESC bd{};
 
@@ -186,7 +196,7 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
     sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
     sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
     sampler_desc.MinLOD = 0;
-    sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
+    sampler_desc.MaxLOD = 0;
     hr = device.CreateSamplerState(&sampler_desc, &render.sampler_linear_);
     Panic(SUCCEEDED(hr));
 
@@ -236,10 +246,15 @@ void RenderModel::render(ID3D11DeviceContext& device_context
         device_context.PSSetShader(pixel_shader_.Get(), nullptr, 0);
         device_context.UpdateSubresource(ps_constant_buffer0_.Get(), 0, nullptr, &ps_cb0, 0, 0);
         device_context.PSSetConstantBuffers(0, 1, ps_constant_buffer0_.GetAddressOf());
-        if (ID3D11ShaderResourceView* ps_texture0 = GetTexture(*this, render_mesh.ps_texture0_id))
+        // Use same sampler for both normal & diffuse textures.
+        device_context.PSSetSamplers(0, 1, sampler_linear_.GetAddressOf());
+        if (ID3D11ShaderResourceView* ps_texture_diffuse = GetTexture(*this, render_mesh.ps_texture_diffuse))
         {
-            device_context.PSSetShaderResources(0, 1, &ps_texture0);
-            device_context.PSSetSamplers(0, 1, sampler_linear_.GetAddressOf());
+            device_context.PSSetShaderResources(0, 1, &ps_texture_diffuse);
+        }
+        if (ID3D11ShaderResourceView* ps_texture_normal = GetTexture(*this, render_mesh.ps_texture_normal))
+        {
+            device_context.PSSetShaderResources(1, 1, &ps_texture_normal);
         }
 
         // Actual draw call.
