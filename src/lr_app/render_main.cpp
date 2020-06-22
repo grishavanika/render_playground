@@ -173,14 +173,21 @@ static void TickImGui(GameState& game)
     ImGui::End();
 }
 
+#if !defined(XX_PACKAGE_FOLDER)
+#  error "Build system missed to specify where package (binaries/data) is."
+#endif
+#if !defined(XX_SHADERS_FODLER)
+#  error "Build system missed to specify where shaders are."
+#endif
+
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
 #if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
-    const char* const obj = R"(K:\backpack\backpack.lr.bin)";
+    const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
 #elif (XX_HAS_NORMALS())
-    const char* const obj = R"(K:\skull\skull.lr.bin)";
+    const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
 #else
-    const char* const obj = R"(K:\tyrannosaurus-rex-skeleton\source\dyno_tex.lr.bin)";
+#  error "Find some predefined model with no Normals."
 #endif
 
     Model model = LoadModel(obj);

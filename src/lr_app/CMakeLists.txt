@@ -42,6 +42,8 @@ set(header_files
     render_lines.h
     )
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
+target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/_package/\"")
+target_compile_definitions(${exe_name} PRIVATE "XX_SHADERS_FODLER=\"${PROJECT_SOURCE_DIR}/src/lr_app/shaders/\"")
 
 target_compile_definitions(${exe_name} PRIVATE UNICODE _UNICODE)
 if (${gcc_on_msvc})

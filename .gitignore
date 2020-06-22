@@ -4,4 +4,5 @@ Debug/
 Release/
 x64/
 build*/
+assets/_package/*
 

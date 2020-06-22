@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 
 #include "model.h"
 
@@ -226,15 +227,21 @@ static AssimpModel Assimp_Load(fs::path file_path)
     return model;
 }
 
+#if !defined(XX_ASSETS_FOLDER)
+#  error "Build system missed to specify where raw assets are."
+#endif
+
 int main()
 {
 #if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
-    const fs::path model_file = R"(K:\backpack\backpack.obj)";
+    const fs::path model_file = XX_ASSETS_FOLDER R"(backpack\backpack.obj)";
 #elif (XX_HAS_NORMALS())
-    const fs::path model_file = R"(K:\skull\skull.obj)";
+    const fs::path model_file = XX_ASSETS_FOLDER R"(skull\skull.obj)";
 #else
-    const fs::path model_file = R"(K:\tyrannosaurus-rex-skeleton\source\dyno_tex.obj)";
+#  error "Find some predefined model with no Normals."
 #endif
+
+    std::printf("Loading '%s' file.\n", model_file.string().c_str());
 
     AssimpModel model = Assimp_Load(model_file);
     Panic(!model.meshes.empty());
@@ -306,11 +313,15 @@ int main()
     const std::uint32_t final_size = offset;
     offset = 0;
 
-    fs::path bin_file = model_file.parent_path();
-    bin_file /= model_file.stem().string() + ".lr.bin";
+    fs::path bin_file = model_file.parent_path().parent_path();
+    bin_file /= "_package";
+    bin_file /= (model_file.stem().string() + ".lr.bin");
+    const std::string binary_file = bin_file.string();
+
+    std::printf("Writing to '%s' file.\n", binary_file.c_str());
 
     FILE* f = nullptr;
-    const errno_t e = fopen_s(&f, bin_file.string().c_str(), "wb");
+    const errno_t e = fopen_s(&f, binary_file.c_str(), "wb");
     Panic(!e);
 
     // Header.
@@ -351,4 +362,6 @@ int main()
     fclose(f);
 
     Panic(final_size == offset);
+
+    std::printf("Done.\n");
 }

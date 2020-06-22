@@ -7,6 +7,8 @@ set(header_files
     )
 
 add_executable(${exe_name} ${src_files} ${header_files})
+target_compile_definitions(${exe_name} PRIVATE "XX_ASSETS_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/\"")
+
 set_all_warnings(${exe_name} PRIVATE)
 
 # Own dependencies.
