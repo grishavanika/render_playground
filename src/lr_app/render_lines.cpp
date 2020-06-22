@@ -1,31 +1,6 @@
 #include "render_lines.h"
-
+#include "shaders_compiler.h"
 #include "utils.h"
-
-#include "shaders/ps_lines.h"
-#include "shaders/vs_lines.h"
-
-static const D3D11_INPUT_ELEMENT_DESC c_lines_vs_layout[] =
-{
-    {
-        .SemanticName = "position",
-        .SemanticIndex = 0,
-        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
-        .InputSlot = 0,
-        .AlignedByteOffset = offsetof(RenderLines::LineVertex, position),
-        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
-        .InstanceDataStepRate = 0
-    },
-    {
-        .SemanticName = "color",
-        .SemanticIndex = 0,
-        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
-        .InputSlot = 0,
-        .AlignedByteOffset = offsetof(RenderLines::LineVertex, color),
-        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
-        .InstanceDataStepRate = 0
-    },
-};
 
 struct LineVSConstantBuffer
 {
@@ -33,33 +8,19 @@ struct LineVSConstantBuffer
     DirectX::XMMATRIX projection;
 };
 
-/*static*/ RenderLines RenderLines::make(const ComPtr<ID3D11Device>& device)
+/*static*/ RenderLines RenderLines::make(const ComPtr<ID3D11Device>& device
+    , const ShadersRef& shaders)
 {
     RenderLines render{};
     render.device_ = device;
 
-    // VS & IA.
-    HRESULT hr = device->CreateVertexShader(
-        k_vs_lines
-        , sizeof(k_vs_lines)
-        , nullptr
-        , &render.vertex_shader_);
-    Panic(SUCCEEDED(hr));
-
-    hr = device->CreateInputLayout(
-        c_lines_vs_layout
-        , _countof(c_lines_vs_layout)
-        , k_vs_lines
-        , sizeof(k_vs_lines)
-        , &render.vertex_layout_);
-    Panic(SUCCEEDED(hr));
-
-    // PS.
-    hr = device->CreatePixelShader(
-        k_ps_lines
-        , sizeof(k_ps_lines)
-        , nullptr, &render.pixel_shader_);
-    Panic(SUCCEEDED(hr));
+    shaders.compiler->create_vs(*device.Get()
+        , *shaders.vs_shader
+        , render.vertex_shader_
+        , render.vertex_layout_);
+    shaders.compiler->create_ps(*device.Get()
+        , *shaders.ps_shader
+        , render.pixel_shader_);
 
     D3D11_BUFFER_DESC desc{};
 #if (0) // Will be created on resize.
@@ -75,7 +36,7 @@ struct LineVSConstantBuffer
     // Create constant buffer.
     desc.ByteWidth = sizeof(LineVSConstantBuffer);
     desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    device->CreateBuffer(&desc, 0, &render.constant_buffer_);
+    HRESULT hr = device->CreateBuffer(&desc, 0, &render.constant_buffer_);
     Panic(SUCCEEDED(hr));
 
     return render;

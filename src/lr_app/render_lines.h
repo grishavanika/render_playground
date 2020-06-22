@@ -15,6 +15,8 @@
 // Mostly from:
 // https://github.com/GPUOpen-LibrariesAndSDKs/GPUParticles11/blob/master/amd_sdk/src/LineRender.h
 
+struct ShadersRef;
+
 struct RenderLines
 {
     struct LineVertex
@@ -32,7 +34,7 @@ struct RenderLines
     ComPtr<ID3D11Buffer> vertex_buffer_ = nullptr;
     ComPtr<ID3D11Buffer> constant_buffer_ = nullptr;
 
-    static RenderLines make(const ComPtr<ID3D11Device>& device);
+    static RenderLines make(const ComPtr<ID3D11Device>& device, const ShadersRef& shaders);
 
     void add_line(const DirectX::XMFLOAT3& p0
         , const DirectX::XMFLOAT3& p1

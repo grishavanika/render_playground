@@ -1,47 +1,5 @@
 #include "render_model.h"
-
-#include "shaders/vs_basic_phong_lighting.h"
-#include "shaders/ps_basic_phong_lighting.h"
-
-const D3D11_INPUT_ELEMENT_DESC layout[] =
-{
-    {
-        .SemanticName = "position",
-        .SemanticIndex = 0,
-        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
-        .InputSlot = 0,
-        .AlignedByteOffset = offsetof(Vertex, position),
-        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
-        .InstanceDataStepRate = 0
-    },
-    {
-        .SemanticName = "normal",
-        .SemanticIndex = 0,
-        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
-        .InputSlot = 0,
-        .AlignedByteOffset = offsetof(Vertex, normal),
-        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
-        .InstanceDataStepRate = 0
-    },
-    {
-        .SemanticName = "tangent",
-        .SemanticIndex = 0,
-        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
-        .InputSlot = 0,
-        .AlignedByteOffset = offsetof(Vertex, tangent),
-        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
-        .InstanceDataStepRate = 0
-    },
-    {
-        .SemanticName = "texcoord",
-        .SemanticIndex = 0,
-        .Format = DXGI_FORMAT_R32G32_FLOAT,
-        .InputSlot = 0,
-        .AlignedByteOffset = offsetof(Vertex, texture_coord),
-        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
-        .InstanceDataStepRate = 0
-    },
-};
+#include "shaders_compiler.h"
 
 static constexpr DXGI_FORMAT GetIndexBufferFormat()
 {
@@ -141,26 +99,19 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
     return render;
 }
 
-/*static*/ RenderModel RenderModel::make(ID3D11Device& device, const Model& model)
+/*static*/ RenderModel RenderModel::make(ID3D11Device& device, const Model& model
+    , const ShadersRef& shaders)
 {
     RenderModel render{};
     render.model = &model;
 
-    // VS & IA.
-    HRESULT hr = device.CreateInputLayout(
-        layout
-        , _countof(layout)
-        , k_vs_basic_phong_lighting
-        , sizeof(k_vs_basic_phong_lighting)
-        , &render.vertex_layout_);
-    Panic(SUCCEEDED(hr));
-
-    hr = device.CreateVertexShader(
-        k_vs_basic_phong_lighting
-        , sizeof(k_vs_basic_phong_lighting)
-        , nullptr
-        , &render.vertex_shader_);
-    Panic(SUCCEEDED(hr));
+    shaders.compiler->create_vs(device
+        , *shaders.vs_shader
+        , render.vertex_shader_
+        , render.vertex_layout_);
+    shaders.compiler->create_ps(device
+        , *shaders.ps_shader
+        , render.pixel_shader_);
 
     // Create the constant buffer for VS.
     D3D11_BUFFER_DESC vs_bd{};
@@ -168,15 +119,7 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
     vs_bd.ByteWidth = sizeof(VSConstantBuffer0);
     vs_bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     vs_bd.CPUAccessFlags = 0;
-    hr = device.CreateBuffer(&vs_bd, nullptr, &render.vs_constant_buffer0_);
-    Panic(SUCCEEDED(hr));
-
-    // PS.
-    hr = device.CreatePixelShader(
-        k_ps_basic_phong_lighting
-        , sizeof(k_ps_basic_phong_lighting)
-        , nullptr
-        , &render.pixel_shader_);
+    HRESULT hr = device.CreateBuffer(&vs_bd, nullptr, &render.vs_constant_buffer0_);
     Panic(SUCCEEDED(hr));
 
     D3D11_BUFFER_DESC ps_bd{};

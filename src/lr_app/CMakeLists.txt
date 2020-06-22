@@ -34,16 +34,20 @@ set(src_files
     render_main.cpp
     render_model.cpp
     render_lines.cpp
+    shaders_database.cpp
+    shaders_compiler.cpp
     )
 set(header_files
     stub_window.h
     utils.h
     render_model.h
     render_lines.h
+    shaders_database.h
+    shaders_compiler.h
     )
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
 target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/_package/\"")
-target_compile_definitions(${exe_name} PRIVATE "XX_SHADERS_FODLER=\"${PROJECT_SOURCE_DIR}/src/lr_app/shaders/\"")
+target_compile_definitions(${exe_name} PRIVATE "XX_SHADERS_FOLDER=\"${PROJECT_SOURCE_DIR}/src/lr_app/shaders/\"")
 
 target_compile_definitions(${exe_name} PRIVATE UNICODE _UNICODE)
 if (${gcc_on_msvc})

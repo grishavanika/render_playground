@@ -29,6 +29,9 @@ using namespace DirectX;
 #include "render_lines.h"
 #include "render_model.h"
 
+#include "shaders_compiler.h"
+#include "shaders_database.h"
+
 struct ImGuiState
 {
     bool show_demo_window = false;
@@ -176,7 +179,7 @@ static void TickImGui(GameState& game)
 #if !defined(XX_PACKAGE_FOLDER)
 #  error "Build system missed to specify where package (binaries/data) is."
 #endif
-#if !defined(XX_SHADERS_FODLER)
+#if !defined(XX_SHADERS_FOLDER)
 #  error "Build system missed to specify where shaders are."
 #endif
 
@@ -492,10 +495,22 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         return FALSE;
     });
 
+    ShadersCompiler compiler;
     ///////////////////////////////////////////////////////////////////////////
-
-    RenderModel render_model = RenderModel::make(*game.device_.Get(), model);
-    RenderLines render_lines = RenderLines::make(game.device_);
+    const ShadersRef model_shaders =
+    {
+        .vs_shader = &c_vs_basic_phong,
+        .ps_shader = &c_ps_basic_phong,
+        .compiler  = &compiler
+    };
+    RenderModel render_model = RenderModel::make(*game.device_.Get(), model, model_shaders);
+    const ShadersRef lines_shaders =
+    {
+        .vs_shader = &c_vs_lines,
+        .ps_shader = &c_ps_lines,
+        .compiler = &compiler
+    };
+    RenderLines render_lines = RenderLines::make(game.device_, lines_shaders);
     render_lines.add_bbox(BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 1.f, 1.f)));
     // Positive World X direction. RED.
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 0.f, 0.f), XMFLOAT3(1.f, 0.f, 0.f));
