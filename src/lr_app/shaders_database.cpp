@@ -9,20 +9,10 @@
 #include "shaders/vs_basic_phong_lighting.h"
 #include "shaders/ps_basic_phong_lighting.h"
 
-static const ShaderInfo* c_all_shaders_imp[] =
-{
-    &c_vs_basic_phong,
-    &c_ps_basic_phong,
-    &c_vs_lines,
-    &c_ps_lines,
-};
-
-extern const std::span<const ShaderInfo*> c_all_shaders = {c_all_shaders_imp};
-
 static const ShaderInfo::Dependency c_basic_phong_deps[] =
 {
     {
-        .file_name = XX_SHADERS_FOLDER "common_basic_phong_lighting.hlsl"
+        .file_name = L"" XX_SHADERS_FOLDER "common_basic_phong_lighting.hlsl"
     }
 };
 
@@ -69,6 +59,7 @@ static const D3D11_INPUT_ELEMENT_DESC c_layout_basic_phong[] =
 extern const ShaderInfo c_vs_basic_phong
 {
     .debug_name        = "vs_basic_phong",
+    .kind              = ShaderInfo::VS,
     .bytecode          = {k_vs_basic_phong_lighting},
     .file_name         = L"" XX_SHADERS_FOLDER "vs_basic_phong_lighting.hlsl",
     .vs_layout         = {c_layout_basic_phong},
@@ -81,6 +72,7 @@ extern const ShaderInfo c_vs_basic_phong
 extern const ShaderInfo c_ps_basic_phong
 {
     .debug_name         = "ps_basic_phong",
+    .kind              = ShaderInfo::PS,
     .bytecode           = {k_ps_basic_phong_lighting},
     .file_name          = L"" XX_SHADERS_FOLDER "ps_basic_phong_lighting.hlsl",
     .vs_layout          = {},
@@ -93,7 +85,7 @@ extern const ShaderInfo c_ps_basic_phong
 static const ShaderInfo::Dependency c_lines_deps[] =
 {
     {
-        .file_name = XX_SHADERS_FOLDER "common_ps_lines.hlsl"
+        .file_name = L"" XX_SHADERS_FOLDER "common_ps_lines.hlsl"
     }
 };
 
@@ -122,6 +114,7 @@ static const D3D11_INPUT_ELEMENT_DESC c_layout_lines[] =
 extern const ShaderInfo c_vs_lines
 {
     .debug_name        = "vs_lines",
+    .kind              = ShaderInfo::VS,
     .bytecode          = {k_vs_lines},
     .file_name         = L"" XX_SHADERS_FOLDER "vs_lines.hlsl",
     .vs_layout         = {c_layout_lines},
@@ -134,6 +127,7 @@ extern const ShaderInfo c_vs_lines
 extern const ShaderInfo c_ps_lines
 {
     .debug_name         = "ps_lines",
+    .kind              = ShaderInfo::PS,
     .bytecode           = {k_ps_lines},
     .file_name          = L"" XX_SHADERS_FOLDER "ps_lines.hlsl",
     .vs_layout          = {},

@@ -1,4 +1,6 @@
 #include "shaders_compiler.h"
+#include <filesystem>
+#include <algorithm>
 
 #include <d3dcompiler.h>
 
@@ -93,4 +95,205 @@ ComPtr<ID3DBlob> ShadersCompiler::compile(const ShaderInfo& shader_info
         error_text.assign(str, length);
     }
     return ComPtr<ID3DBlob>();
+}
+
+/*explicit*/ ShadersWatch::ShadersWatch(ShadersCompiler& compiler)
+    : compiler_(&compiler)
+    , dirs_()
+    , io_port_()
+{
+}
+
+void ShadersWatch::recompile_on_change(const ShaderInfo& shader)
+{
+    add_watch(shader, shader.file_name);
+    for (const ShaderInfo::Dependency& dep : shader.dependencies)
+    {
+        add_watch(shader, dep.file_name);
+    }
+}
+
+ShadersWatch::ShaderPatch ShadersWatch::fetch_latest_version(const ShaderInfo& shader)
+{
+    auto it = std::find_if(patches_.begin(), patches_.end()
+        , [&shader](const ShaderPatch& existing)
+    {
+        return (existing.shader_info == &shader);
+    });
+    if (it == patches_.end())
+    {
+        return ShaderPatch{};
+    }
+    return *it;
+}
+
+void ShadersWatch::add_watch(const ShaderInfo& shader, const wchar_t* file)
+{
+    namespace fs = std::filesystem;
+    fs::path path = fs::canonical(file);
+
+    auto dir_path = path.parent_path().wstring();
+    Directory* dir = nullptr;
+    for (std::unique_ptr<Directory>& d : dirs_)
+    {
+        if (d->directory_path == dir_path)
+        {
+            dir = d.get();
+            break;
+        }
+    }
+    if (!dir)
+    {
+        const wi::WinULONG_PTR key = wi::WinULONG_PTR(dirs_.size());
+        dir = dirs_.emplace_back(Directory::make(std::move(dir_path), io_port_, key)).get();
+    }
+    Panic(dir);
+
+    auto file_name = path.filename().wstring();
+    Directory::FileMap* file_map = nullptr;
+    for (Directory::FileMap& fm : dir->files)
+    {
+        if (fm.file_name != file_name)
+        {
+            continue;
+        }
+        for (const ShaderInfo* existing_shader : fm.shaders)
+        {
+            if (existing_shader == &shader)
+            {
+                return;
+            }
+        }
+        file_map = &fm;
+        break;
+    }
+    if (!file_map)
+    {
+        Directory::FileMap fm;
+        fm.file_name = std::move(file_name);
+        file_map = &dir->files.emplace_back(std::move(fm));
+    }
+    file_map->shaders.push_back(&shader);
+}
+
+/*static*/ auto ShadersWatch::Directory::make(
+    std::wstring directory_path
+    , wi::IoCompletionPort& io_port
+    , wi::WinULONG_PTR key)
+        -> std::unique_ptr<Directory>
+{
+    std::unique_ptr<Directory> ptr(new Directory());
+    ptr->directory = wi::DirectoryChanges::open_directory_for_watch(directory_path.c_str());
+    Panic(ptr->directory != INVALID_HANDLE_VALUE);
+    ptr->directory_path = std::move(directory_path);
+    new(static_cast<void*>(&ptr->watcher_data)) wi::DirectoryChanges(
+        ptr->directory
+        , ptr->buffer
+        , sizeof(ptr->buffer)
+        , false // do NOT watch subtree
+        , FILE_NOTIFY_CHANGE_LAST_WRITE
+        , io_port
+        , key);
+    return ptr;
+}
+
+ShadersWatch::Directory::~Directory()
+{
+    if (directory && (directory != INVALID_HANDLE_VALUE))
+    {
+        (void)::CloseHandle(directory);
+        directory = nullptr;
+    }
+    using DirectoryChanges = wi::DirectoryChanges;
+    watcher().~DirectoryChanges();
+}
+
+void ShadersWatch::start_all()
+{
+    for (std::unique_ptr<Directory>& d : dirs_)
+    {
+        std::error_code ec;
+        d->watcher().start_watch(ec);
+        Panic(!ec);
+    }
+}
+
+void ShadersWatch::collect_changes(ID3D11Device& device)
+{
+    std::vector<const ShaderInfo*> shaders;
+
+    std::error_code ec;
+    while (std::optional<wi::PortData> data = io_port_.query(ec))
+    {
+        Panic(!ec);
+        if (!data)
+        {
+            continue;
+        }
+        if (data->key >= wi::WinULONG_PTR(dirs_.size()))
+        {
+            continue;
+        }
+        Directory& dir = *dirs_[std::size_t(data->key)];
+        wi::DirectoryChangesRange changes(dir.buffer, *data);
+        for (const wi::DirectoryChange& file_change : changes)
+        {
+            bool found = false;
+            for (const Directory::FileMap& fm : dir.files)
+            {
+                if (fm.file_name == file_change.name)
+                {
+                    shaders.insert(shaders.end(), fm.shaders.begin(), fm.shaders.end());
+                    found = true;
+                    break;
+                }
+            }
+            Panic(found);
+        }
+        dir.watcher().start_watch(ec);
+        Panic(!ec);
+    }
+
+    std::sort(shaders.begin(), shaders.end());
+    auto unique_end = std::unique(shaders.begin(), shaders.end());
+    for (auto it = shaders.begin(); it != unique_end; ++it)
+    {
+        const ShaderInfo& shader = **it;
+        std::string errors;
+        ComPtr<ID3DBlob> bytecode = compiler_->compile(shader, errors);
+        if (!bytecode)
+        {
+            continue;
+        }
+        ShaderPatch patch;
+        patch.shader_info = &shader;
+        if (shader.kind == ShaderInfo::VS)
+        {
+            compiler_->create_vs(device
+                , shader
+                , patch.vs_shader
+                , patch.vs_layout
+                , bytecode.Get());
+        }
+        else if (shader.kind == ShaderInfo::PS)
+        {
+            compiler_->create_ps(device
+                , shader
+                , patch.ps_shader
+                , bytecode.Get());
+        }
+        add_newest_patch(std::move(patch));
+    }
+}
+
+
+void ShadersWatch::add_newest_patch(ShaderPatch new_patch)
+{
+    auto it = std::remove_if(patches_.begin(), patches_.end()
+        , [&new_patch](const ShaderPatch& existing)
+    {
+        return (existing.shader_info == new_patch.shader_info);
+    });
+    patches_.erase(it, patches_.end());
+    patches_.push_back(std::move(new_patch));
 }

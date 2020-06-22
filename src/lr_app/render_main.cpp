@@ -496,19 +496,22 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     });
 
     ShadersCompiler compiler;
+    ShadersWatch watch(compiler);
     ///////////////////////////////////////////////////////////////////////////
     const ShadersRef model_shaders =
     {
         .vs_shader = &c_vs_basic_phong,
         .ps_shader = &c_ps_basic_phong,
-        .compiler  = &compiler
+        .compiler  = &compiler,
+        .watch     = &watch
     };
     RenderModel render_model = RenderModel::make(*game.device_.Get(), model, model_shaders);
     const ShadersRef lines_shaders =
     {
         .vs_shader = &c_vs_lines,
         .ps_shader = &c_ps_lines,
-        .compiler = &compiler
+        .compiler  = &compiler,
+        .watch     = &watch
     };
     RenderLines render_lines = RenderLines::make(game.device_, lines_shaders);
     render_lines.add_bbox(BoundingBox(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(1.f, 1.f, 1.f)));
@@ -518,6 +521,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f), XMFLOAT3(0.f, 1.f, 0.f));
     // Positive World Z direction. BLUE.
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT3(0.f, 0.f, 1.f));
+
+    watch.start_all();
 
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
@@ -535,6 +540,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             ::DispatchMessage(&msg);
             continue;
         }
+
+        watch.collect_changes(*game.device_.Get());
 
         // Start the Dear ImGui frame.
         ImGui_ImplDX11_NewFrame();

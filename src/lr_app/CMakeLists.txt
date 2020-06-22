@@ -44,6 +44,8 @@ set(header_files
     render_lines.h
     shaders_database.h
     shaders_compiler.h
+    read_directory_changes.h
+    io_completion_port.h
     )
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
 target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/_package/\"")

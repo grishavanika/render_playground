@@ -11,6 +11,7 @@
 
 #include "utils.h"
 #include "model.h"
+#include "shaders_compiler.h"
 
 struct ShadersRef;
 
@@ -65,6 +66,8 @@ struct RenderModel
     ComPtr<ID3D11Buffer> ps_constant_buffer0_;
     ComPtr<ID3D11SamplerState> sampler_linear_;
 
+    ShadersRef shaders_;
+
     // Tweak whole model position & orientation.
     DirectX::XMMATRIX world;
 
@@ -78,6 +81,6 @@ struct RenderModel
 
     void render(ID3D11DeviceContext& device_context
         , const DirectX::XMMATRIX& view_transposed
-        , const DirectX::XMMATRIX& projection_transposed) const;
+        , const DirectX::XMMATRIX& projection_transposed);
 };
 #pragma warning(pop)
