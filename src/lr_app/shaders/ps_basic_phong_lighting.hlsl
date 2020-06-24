@@ -68,5 +68,5 @@ float4 main_ps(VS_OUTPUT input) : SV_Target
     specular = specular / length(d);
 
     float3 final_color = object_color * (ambient + diffuse + specular);
-    return float4(final_color, 1);
+    return float4(final_color, 1.0);
 }

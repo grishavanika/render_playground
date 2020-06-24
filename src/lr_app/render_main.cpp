@@ -28,9 +28,50 @@ using namespace DirectX;
 
 #include "render_lines.h"
 #include "render_model.h"
+#include "render_vertices_only.h"
 
 #include "shaders_compiler.h"
 #include "shaders_database.h"
+
+static const Vector3f c_cube_vertices[] =
+{
+    Vector3f{-0.5f, -0.5f, -0.5f},
+    Vector3f{ 0.5f, -0.5f, -0.5f},
+    Vector3f{ 0.5f,  0.5f, -0.5f},
+    Vector3f{ 0.5f,  0.5f, -0.5f},
+    Vector3f{-0.5f,  0.5f, -0.5f},
+    Vector3f{-0.5f, -0.5f, -0.5f},
+    Vector3f{-0.5f, -0.5f,  0.5f},
+    Vector3f{ 0.5f, -0.5f,  0.5f},
+    Vector3f{ 0.5f,  0.5f,  0.5f},
+    Vector3f{ 0.5f,  0.5f,  0.5f},
+    Vector3f{-0.5f,  0.5f,  0.5f},
+    Vector3f{-0.5f, -0.5f,  0.5f},
+    Vector3f{-0.5f,  0.5f,  0.5f},
+    Vector3f{-0.5f,  0.5f, -0.5f},
+    Vector3f{-0.5f, -0.5f, -0.5f},
+    Vector3f{-0.5f, -0.5f, -0.5f},
+    Vector3f{-0.5f, -0.5f,  0.5f},
+    Vector3f{-0.5f,  0.5f,  0.5f},
+    Vector3f{ 0.5f,  0.5f,  0.5f},
+    Vector3f{ 0.5f,  0.5f, -0.5f},
+    Vector3f{ 0.5f, -0.5f, -0.5f},
+    Vector3f{ 0.5f, -0.5f, -0.5f},
+    Vector3f{ 0.5f, -0.5f,  0.5f},
+    Vector3f{ 0.5f,  0.5f,  0.5f},
+    Vector3f{-0.5f, -0.5f, -0.5f},
+    Vector3f{ 0.5f, -0.5f, -0.5f},
+    Vector3f{ 0.5f, -0.5f,  0.5f},
+    Vector3f{ 0.5f, -0.5f,  0.5f},
+    Vector3f{-0.5f, -0.5f,  0.5f},
+    Vector3f{-0.5f, -0.5f, -0.5f},
+    Vector3f{-0.5f,  0.5f, -0.5f},
+    Vector3f{ 0.5f,  0.5f, -0.5f},
+    Vector3f{ 0.5f,  0.5f,  0.5f},
+    Vector3f{ 0.5f,  0.5f,  0.5f},
+    Vector3f{-0.5f,  0.5f,  0.5f},
+    Vector3f{-0.5f,  0.5f, -0.5f}
+};
 
 struct ImGuiState
 {
@@ -50,7 +91,9 @@ struct ImGuiState
     // Render config.
     bool wireframe = false;
     bool need_change_wireframe = false;
-    bool show_model = true;
+    bool show_model = false;
+    bool show_zero_world_space = false;
+    bool show_cube = true;
     bool enable_mouse = false;
 
     bool check_wireframe_change()
@@ -161,6 +204,8 @@ static void TickImGui(GameState& game)
         ImGui::SameLine();
         imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
         (void)ImGui::Checkbox("Show model", &imgui.show_model);
+        (void)ImGui::Checkbox("Show zero world space", &imgui.show_zero_world_space);
+        (void)ImGui::Checkbox("Show cube", &imgui.show_cube);
 
         (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
         (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
@@ -507,21 +552,25 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         }
         return FALSE;
     });
+    ///////////////////////////////////////////////////////////////////////////
 
     ShadersCompiler compiler;
     ShadersWatch watch(compiler);
 
-    RenderModel render_model = RenderModel::make(*game.device_.Get(), model);
-    RenderLines render_lines = RenderLines::make(game.device_);
+    RenderModel render_model   = RenderModel::make(*game.device_.Get(), model);
+    RenderLines render_lines   = RenderLines::make(game.device_);
+    RenderVertices render_cube = RenderVertices::make(game.device_, c_cube_vertices);
     const VSShader vs_shaders[] =
     {
-        {&c_vs_basic_phong, std::addressof(render_model.vertex_shader_), std::addressof(render_model.vertex_layout_)},
-        {&c_vs_lines,       std::addressof(render_lines.vertex_shader_), std::addressof(render_lines.vertex_layout_)},
+        {&c_vs_basic_phong,   std::addressof(render_model.vertex_shader_), std::addressof(render_model.vertex_layout_)},
+        {&c_vs_lines,         std::addressof(render_lines.vertex_shader_), std::addressof(render_lines.vertex_layout_)},
+        {&c_vs_vertices_only, std::addressof(render_cube.vertex_shader_),  std::addressof(render_cube.vertex_layout_)},
     };
     const PSShader ps_shaders[] =
     {
-        {&c_ps_basic_phong, std::addressof(render_model.pixel_shader_)},
-        {&c_ps_lines,       std::addressof(render_lines.pixel_shader_)},
+        {&c_ps_basic_phong,   std::addressof(render_model.pixel_shader_)},
+        {&c_ps_lines,         std::addressof(render_lines.pixel_shader_)},
+        {&c_ps_vertices_only, std::addressof(render_cube.pixel_shader_)},
     };
 
     for (const VSShader& vs : vs_shaders)
@@ -639,9 +688,28 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         game.device_context_->RSSetState(rasterizer_state.Get());
         game.device_context_->RSSetViewports(1, &game.vp_);
 
-        render_lines.render(*game.device_context_.Get()
-            , XMMatrixTranspose(view)
-            , XMMatrixTranspose(projection));
+        if (game.imgui_.show_cube)
+        {
+            render_cube.render(*game.device_context_.Get()
+#if (0)
+                , XMMatrixTranspose(XMMatrixIdentity())
+                , XMMatrixTranspose(XMMatrixIdentity())
+#else
+                , XMMatrixTranspose(view)
+                , XMMatrixTranspose(projection)
+#endif
+            );
+        }
+
+        if (game.imgui_.show_zero_world_space)
+        {
+#if (0)
+            render_lines.world = render_model.world;
+#endif
+            render_lines.render(*game.device_context_.Get()
+                , XMMatrixTranspose(view)
+                , XMMatrixTranspose(projection));
+        }
         if (game.imgui_.show_model)
         {
             render_model.render(*game.device_context_.Get()

@@ -9,6 +9,9 @@
 #include "shaders/vs_basic_phong_lighting.h"
 #include "shaders/ps_basic_phong_lighting.h"
 
+#include "shaders/vs_vertices_only.h"
+#include "shaders/ps_vertices_only.h"
+
 static const ShaderInfo::Dependency c_basic_phong_deps[] =
 {
     {
@@ -134,5 +137,44 @@ extern const ShaderInfo c_ps_lines
     .entry_point_name   = "main_ps",
     .profile            = "ps_5_0",
     .dependencies       = {c_lines_deps},
+    .defines            = {}
+};
+
+static const D3D11_INPUT_ELEMENT_DESC c_layout_vertices_only[] =
+{
+    {
+        .SemanticName = "position",
+        .SemanticIndex = 0,
+        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
+        .InputSlot = 0,
+        .AlignedByteOffset = 0,
+        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+        .InstanceDataStepRate = 0
+    },
+};
+
+extern const ShaderInfo c_vs_vertices_only
+{
+    .debug_name        = "vs_vertices_only",
+    .kind              = ShaderInfo::VS,
+    .bytecode          = {k_vs_vertices_only},
+    .file_name         = L"" XX_SHADERS_FOLDER "vs_vertices_only.hlsl",
+    .vs_layout         = {c_layout_vertices_only},
+    .entry_point_name  = "main_vs",
+    .profile           = "vs_5_0",
+    .dependencies      = {},
+    .defines           = {}
+};
+
+extern const ShaderInfo c_ps_vertices_only
+{
+    .debug_name         = "ps_vertices_only",
+    .kind              = ShaderInfo::PS,
+    .bytecode           = {k_ps_vertices_only},
+    .file_name          = L"" XX_SHADERS_FOLDER "ps_vertices_only.hlsl",
+    .vs_layout          = {},
+    .entry_point_name   = "main_ps",
+    .profile            = "ps_5_0",
+    .dependencies       = {},
     .defines            = {}
 };

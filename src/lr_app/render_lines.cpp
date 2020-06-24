@@ -4,6 +4,7 @@
 
 struct LineVSConstantBuffer
 {
+    DirectX::XMMATRIX world;
     DirectX::XMMATRIX view;
     DirectX::XMMATRIX projection;
 };
@@ -12,22 +13,25 @@ struct LineVSConstantBuffer
 {
     RenderLines render{};
     render.device_ = device;
+    render.world = DirectX::XMMatrixTranspose(DirectX::XMMatrixIdentity());
 
     D3D11_BUFFER_DESC desc{};
 #if (0) // Will be created on resize.
     // Create vertex buffer.
-    desc.ByteWidth = render.vertices_ * sizeof(LineVertex);
+    desc.ByteWidth = UINT(render.vertices_.size() * sizeof(LineVertex));
     desc.Usage = D3D11_USAGE_DYNAMIC;
     desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    hr = device->CreateBuffer(&desc, 0, &render.vertex_buffer_);
+    HRESULT hr = device->CreateBuffer(&desc, 0, &render.vertex_buffer_);
     Panic(SUCCEEDED(hr));
+#else
+    HRESULT hr;
 #endif
 
     // Create constant buffer.
     desc.ByteWidth = sizeof(LineVSConstantBuffer);
     desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    HRESULT hr = device->CreateBuffer(&desc, 0, &render.constant_buffer_);
+    hr = device->CreateBuffer(&desc, 0, &render.constant_buffer_);
     Panic(SUCCEEDED(hr));
 
     return render;
@@ -119,6 +123,7 @@ void RenderLines::render(ID3D11DeviceContext& device_context
 
     // Vertex Shader.
     LineVSConstantBuffer vs_constants;
+    vs_constants.world = world;
     vs_constants.projection = projection_transposed;
     vs_constants.view = view_transposed;
     device_context.VSSetShader(vertex_shader_.Get(), 0, 0);
