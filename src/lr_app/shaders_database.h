@@ -10,3 +10,6 @@ extern const ShaderInfo c_ps_lines;
 
 extern const ShaderInfo c_vs_vertices_only;
 extern const ShaderInfo c_ps_vertices_only;
+
+extern const ShaderInfo c_vs_normals;
+extern const ShaderInfo c_ps_normals;
