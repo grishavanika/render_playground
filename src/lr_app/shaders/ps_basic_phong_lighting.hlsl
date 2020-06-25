@@ -62,7 +62,7 @@ float4 main_ps(VS_OUTPUT input) : SV_Target
     float3 view_dir         = normalize((float3)ViewerPosition - input.WorldPos);
     float3 reflect_dir      = reflect(-light_dir, normal);
     float spec              = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
-    float3 specular         = specular_strength * spec * (float3)LightColor; 
+    float3 specular         = specular_strength * spec * (float3)LightColor;
 
     // Note: learnopengl does not do this.
     specular = specular / length(d);

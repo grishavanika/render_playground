@@ -17,42 +17,50 @@ set_source_files_properties(shaders/vs_basic_phong_lighting.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_vs
     VS_SHADER_TYPE                Vertex
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_basic_phong_lighting.h
-    VS_SHADER_VARIABLE_NAME       k_vs_basic_phong_lighting)
+    VS_SHADER_VARIABLE_NAME       k_vs_basic_phong_lighting
+    VS_SHADER_MODEL               5.0)
 set_source_files_properties(shaders/ps_basic_phong_lighting.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_ps
     VS_SHADER_TYPE                Pixel
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_basic_phong_lighting.h
-    VS_SHADER_VARIABLE_NAME       k_ps_basic_phong_lighting)
+    VS_SHADER_VARIABLE_NAME       k_ps_basic_phong_lighting
+    VS_SHADER_MODEL               5.0)
 set_source_files_properties(shaders/vs_lines.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_vs
     VS_SHADER_TYPE                Vertex
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_lines.h
-    VS_SHADER_VARIABLE_NAME       k_vs_lines)
+    VS_SHADER_VARIABLE_NAME       k_vs_lines
+    VS_SHADER_MODEL               5.0)
 set_source_files_properties(shaders/ps_lines.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_ps
     VS_SHADER_TYPE                Pixel
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_lines.h
-    VS_SHADER_VARIABLE_NAME       k_ps_lines)
+    VS_SHADER_VARIABLE_NAME       k_ps_lines
+    VS_SHADER_MODEL               5.0)
 set_source_files_properties(shaders/vs_vertices_only.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_vs
     VS_SHADER_TYPE                Vertex
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_vertices_only.h
-    VS_SHADER_VARIABLE_NAME       k_vs_vertices_only)
+    VS_SHADER_VARIABLE_NAME       k_vs_vertices_only
+    VS_SHADER_MODEL               5.0)
 set_source_files_properties(shaders/ps_vertices_only.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_ps
     VS_SHADER_TYPE                Pixel
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_vertices_only.h
-    VS_SHADER_VARIABLE_NAME       k_ps_vertices_only)
+    VS_SHADER_VARIABLE_NAME       k_ps_vertices_only
+    VS_SHADER_MODEL               5.0)
 set_source_files_properties(shaders/vs_normals.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_vs
     VS_SHADER_TYPE                Vertex
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_normals.h
-    VS_SHADER_VARIABLE_NAME       k_vs_normals)
+    VS_SHADER_VARIABLE_NAME       k_vs_normals
+    VS_SHADER_MODEL               5.0)
 set_source_files_properties(shaders/ps_normals.hlsl PROPERTIES
     VS_SHADER_ENTRYPOINT          main_ps
     VS_SHADER_TYPE                Pixel
     VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_normals.h
-    VS_SHADER_VARIABLE_NAME       k_ps_normals)
+    VS_SHADER_VARIABLE_NAME       k_ps_normals
+    VS_SHADER_MODEL               5.0)
 
 set(src_files
     render_main.cpp
