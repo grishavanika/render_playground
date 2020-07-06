@@ -1,5 +1,4 @@
 #pragma once
-#include <Windows.h>
 #include <span>
 #include <string>
 #include <functional>
@@ -7,11 +6,7 @@
 #include <vector>
 #include <type_traits>
 
-#pragma warning(push)
-// macro redefinition
-#pragma warning(disable : 4005)
-#include <d3d11.h>
-#pragma warning(pop)
+#include "dx_api.h"
 
 #include "utils.h"
 #include "read_directory_changes.h"

@@ -3,13 +3,8 @@
 #include <windowsx.h>
 #include <tchar.h>
 
-#pragma warning(push)
-// macro redefinition
-#pragma warning(disable : 4005)
-#include <d3d11.h>
-#pragma warning(pop)
+#include "dx_api.h"
 
-#include <DirectXMath.h>
 using namespace DirectX;
 
 // Integration of ImGui comes from
@@ -636,6 +631,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 #endif
         if (game.imgui_.check_wireframe_change())
         {
+            window.~StubWindow();
             wfd.FillMode = game.imgui_.wireframe
                 ? D3D11_FILL_WIREFRAME
                 : D3D11_FILL_SOLID;

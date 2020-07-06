@@ -129,25 +129,24 @@ private:
             return;
         }
 
-#if (0) // #TODO: investigate why this is not equal to `this`.
-        StubWindow* self1 = reinterpret_cast<StubWindow*>(::GetWindowLongPtr(wnd_, GWLP_USERDATA));
-        Panic(self1 == this);
-#endif
-#if (0)
         const StubWindow* self = reinterpret_cast<const StubWindow*>(
             ::SetWindowLongPtr(wnd_, GWLP_USERDATA, LONG_PTR(0)));
-        Panic(self == this);
-
         BOOL ok = ::DestroyWindow(wnd_);
-        Panic(ok);
-#endif
+        // We may fail to destroy because windows is already destroyed
+        // by the user. Otherwise, on success, be sure we owned this window.
+        // (User data is set to our instance of window).
+        Panic(!ok || (self == this));
 
         HINSTANCE app_handle = ::GetModuleHandle(nullptr);
-        BOOL ok = ::UnregisterClassA(class_name_, app_handle);
+        ok = ::UnregisterClassA(class_name_, app_handle);
         Panic(ok);
 
-        wnd_ = nullptr;
+        // Be sure to clear handlers _after_ ::DestroyWindow()
+        // so user may handle WM_DESTROY* message, if needed.
         class_name_ = nullptr;
+        wnd_handler_ = {};
+        handlers_ = {};
+        wnd_ = nullptr;
     }
 
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)

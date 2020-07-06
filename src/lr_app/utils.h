@@ -4,11 +4,6 @@
 #include <cstdlib>
 #include <cassert>
 
-#include <wrl/client.h>
-
-template<typename T>
-using ComPtr = Microsoft::WRL::ComPtr<T>;
-
 inline void Panic(bool condition)
 {
     if (!condition)
@@ -26,6 +21,5 @@ inline void Panic(bool condition)
 
 inline float DegreesToRadians(float degrees)
 {
-    const float degree_to_radian = 0.01745329252f; // 3.14/180
-    return (degrees * degree_to_radian);
+    return (degrees * 0.01745329252f); // 3.14 / 180
 }
