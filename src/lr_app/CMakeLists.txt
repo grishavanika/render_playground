@@ -85,6 +85,7 @@ set(header_files
     render_with_normals.h
     predefined_objects.h
     dx_api.h
+    imgui_debug.h
     )
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
 target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/_package/\"")

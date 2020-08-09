@@ -5,21 +5,9 @@
 
 #include "dx_api.h"
 
-using namespace DirectX;
-
-// Integration of ImGui comes from
-// imgui-src/examples/example_win32_directx11/main.cpp
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx11.h"
-
-#include <cstdlib>
-
-#include <vector>
-#include <unordered_set>
-
 #include "stub_window.h"
 #include "utils.h"
+#include "imgui_debug.h"
 
 #include "render_lines.h"
 #include "render_model.h"
@@ -31,55 +19,18 @@ using namespace DirectX;
 
 #include "predefined_objects.h"
 
-struct ImGuiState
-{
-    bool show_demo_window = false;
-    bool show = false;
-    
-    // Lighting.
-    float light_power = 5.f;
-    ImVec4 light_color = ImVec4(1.f, 1.f, 1.f, 1.f);
+#include <cstdlib>
 
-    // Model.
-    float model_scale = 1.f;
-    // Pitch, Yaw, Roll.
-    // http://hugin.sourceforge.net/docs/manual/Image_positioning_model.html#:~:text=Positive%20Roll%20values%20mean%20the,%2B90%C2%B0%20(Zenith).
-    ImVec4 model_rotation = ImVec4(0.f, 180.f, 0.f, 0.f);
+#include <vector>
+#include <unordered_set>
 
-    // Render config.
-    bool wireframe = false;
-    bool need_change_wireframe = false;
-    bool show_model = false;
-    bool show_zero_world_space = false;
-    bool show_cube = false;
-    bool show_cube_normals = true;
-    bool enable_mouse = false;
+// Integration of ImGui comes from
+// imgui-src/examples/example_win32_directx11/main.cpp
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
 
-    bool check_wireframe_change()
-    {
-        if (need_change_wireframe)
-        {
-            need_change_wireframe = false;
-            return true;
-        }
-        return false;
-    }
-    XMVECTOR get_light_color() const
-    {
-        return light_power * XMVectorSet(light_color.x, light_color.y, light_color.z, 1.f);
-    }
-    XMMATRIX get_model_scale() const
-    {
-        return XMMatrixScaling(model_scale, model_scale, model_scale);
-    }
-    XMMATRIX get_model_rotation() const
-    {
-        const float pitch = DegreesToRadians(model_rotation.x);
-        const float yaw   = DegreesToRadians(model_rotation.y);
-        const float roll  = DegreesToRadians(model_rotation.z);
-        return XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
-    }
-};
+using namespace DirectX;
 
 #pragma warning(push)
 // structure was padded due to alignment specifier
@@ -94,7 +45,7 @@ struct GameState
     float camera_yaw_degrees_ = 90.f;  // [-180; 180]
     float camera_pitch_degrees_ = 0.f; // [-90; 90]
     float camera_rotation_mouse_sensitivity_ = 0.04f;
-    float camera_move_speed_ = 0.5f;
+    float camera_move_speed_ = 0.2f;
 
     std::unordered_set<WPARAM> keys_down_;
 
@@ -112,109 +63,8 @@ struct GameState
 };
 #pragma warning(pop)
 
-static void TickInput(GameState& game)
+void AddMessageHandling(StubWindow& window, GameState& game)
 {
-    if (game.keys_down_.contains(0x57)) // W
-    {
-        game.camera_position_ += (game.camera_move_speed_ * game.camera_front_dir_);
-    }
-    if (game.keys_down_.contains(0x53)) // S
-    {
-        game.camera_position_ -= (game.camera_front_dir_ * game.camera_move_speed_);
-    }
-    if (game.keys_down_.contains(0x41)) // A
-    {
-        game.camera_position_ += (game.camera_right_dir_ * game.camera_move_speed_);
-    }
-    if (game.keys_down_.contains(0x44)) // D
-    {
-        game.camera_position_ -= (game.camera_right_dir_ * game.camera_move_speed_);
-    }
-    if (game.keys_down_.contains(0x51)) // Q
-    {
-        game.camera_position_ -= (game.camera_up_dir_ * game.camera_move_speed_);
-    }
-    if (game.keys_down_.contains(0x45)) // E
-    {
-        game.camera_position_ += (game.camera_up_dir_ * game.camera_move_speed_);
-    }
-    if (game.keys_down_.contains(0x4D)) // M
-    {
-        game.imgui_.enable_mouse = !game.imgui_.enable_mouse;
-        game.keys_down_.erase(0x4D);
-    }
-}
-
-static void TickImGui(GameState& game)
-{
-    if (game.imgui_.show_demo_window)
-    {
-        ImGui::ShowDemoWindow(&game.imgui_.show_demo_window);
-    }
-    if (!game.imgui_.show)
-    {
-        return;
-    }
-
-    ImGuiState& imgui = game.imgui_;
-    if (ImGui::Begin("Tweaks", &imgui.show))
-    {
-        (void)ImGui::Checkbox("Enable Mouse (M)", &imgui.enable_mouse);
-        ImGui::SameLine();
-        imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
-        (void)ImGui::Checkbox("Show model", &imgui.show_model);
-        (void)ImGui::Checkbox("Show zero world space", &imgui.show_zero_world_space);
-        (void)ImGui::Checkbox("Show cube", &imgui.show_cube);
-        (void)ImGui::Checkbox("Show cube (with normals)", &imgui.show_cube_normals);
-
-        (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
-        (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
-        (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 32.f);
-        
-        (void)ImGui::SliderFloat3("Model rotation (Pitch, Yaw, Roll)", (float*)&imgui.model_rotation, -180., 180.f);
-        imgui.model_rotation.x = std::clamp(imgui.model_rotation.x, -90.f, 90.f);
-
-        (void)ImGui::SliderFloat3("Camera position", (float*)&game.camera_position_, -100.f, 100.f);
-
-        (void)ImGui::Checkbox("ImGui Demo", &imgui.show_demo_window);
-    }
-    ImGui::End();
-}
-
-#if !defined(XX_PACKAGE_FOLDER)
-#  error "Build system missed to specify where package (binaries/data) is."
-#endif
-#if !defined(XX_SHADERS_FOLDER)
-#  error "Build system missed to specify where shaders are."
-#endif
-
-struct VSShader
-{
-    const ShaderInfo* vs_info;
-    ComPtr<ID3D11VertexShader>* vs;
-    ComPtr<ID3D11InputLayout>* vs_layout;
-};
-
-struct PSShader
-{
-    const ShaderInfo* ps_info;
-    ComPtr<ID3D11PixelShader>* ps;
-};
-
-int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
-{
-#if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
-    const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
-#elif (XX_HAS_NORMALS())
-    const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
-#else
-#  error "Find some predefined model with no Normals."
-#endif
-
-    Model model = LoadModel(obj);
-
-    GameState game;
-    StubWindow window("xxx_lr");
     window.on_message(WM_PAINT
         , [](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
     {
@@ -383,6 +233,112 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         }
         return ::DefWindowProc(hwnd, message, wparam, lparam);
     });
+}
+
+static void TickInput(GameState& game)
+{
+    if (game.keys_down_.contains(0x57)) // W
+    {
+        game.camera_position_ += (game.camera_front_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x53)) // S
+    {
+        game.camera_position_ -= (game.camera_front_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x41)) // A
+    {
+        game.camera_position_ += (game.camera_right_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x44)) // D
+    {
+        game.camera_position_ -= (game.camera_right_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x51)) // Q
+    {
+        game.camera_position_ -= (game.camera_up_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x45)) // E
+    {
+        game.camera_position_ += (game.camera_up_dir_ * game.camera_move_speed_);
+    }
+    if (game.keys_down_.contains(0x4D)) // M
+    {
+        game.imgui_.enable_mouse = !game.imgui_.enable_mouse;
+        game.keys_down_.erase(0x4D);
+    }
+}
+
+static void TickImGui(GameState& game)
+{
+    if (game.imgui_.show_demo_window)
+    {
+        ImGui::ShowDemoWindow(&game.imgui_.show_demo_window);
+    }
+    if (!game.imgui_.show)
+    {
+        return;
+    }
+
+    ImGuiState& imgui = game.imgui_;
+    if (ImGui::Begin("Tweaks", &imgui.show))
+    {
+        (void)ImGui::Checkbox("Enable Mouse (M)", &imgui.enable_mouse);
+        ImGui::SameLine();
+        imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
+        (void)ImGui::Checkbox("Show model", &imgui.show_model);
+        (void)ImGui::Checkbox("Show zero world space", &imgui.show_zero_world_space);
+        (void)ImGui::Checkbox("Show cube", &imgui.show_cube);
+        (void)ImGui::Checkbox("Show cube (with normals)", &imgui.show_cube_normals);
+
+        (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
+        (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
+        (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 32.f);
+        
+        (void)ImGui::SliderFloat3("Model rotation (Pitch, Yaw, Roll)", (float*)&imgui.model_rotation, -180., 180.f);
+        imgui.model_rotation.x = std::clamp(imgui.model_rotation.x, -90.f, 90.f);
+
+        (void)ImGui::SliderFloat3("Camera position", (float*)&game.camera_position_, -100.f, 100.f);
+
+        (void)ImGui::Checkbox("ImGui Demo", &imgui.show_demo_window);
+    }
+    ImGui::End();
+}
+
+#if !defined(XX_PACKAGE_FOLDER)
+#  error "Build system missed to specify where package (binaries/data) is."
+#endif
+#if !defined(XX_SHADERS_FOLDER)
+#  error "Build system missed to specify where shaders are."
+#endif
+
+struct VSShader
+{
+    const ShaderInfo* vs_info;
+    ComPtr<ID3D11VertexShader>* vs;
+    ComPtr<ID3D11InputLayout>* vs_layout;
+};
+
+struct PSShader
+{
+    const ShaderInfo* ps_info;
+    ComPtr<ID3D11PixelShader>* ps;
+};
+
+int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
+{
+#if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
+    const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
+#elif (XX_HAS_NORMALS())
+    const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
+#else
+#  error "Find some predefined model with no Normals."
+#endif
+
+    Model model = LoadModel(obj);
+
+    GameState game;
+    StubWindow window("xxx_lr");
+    AddMessageHandling(window, game);
 
     Panic(::ShowWindow(window.wnd(), SW_SHOW) == 0/*was previously hidden*/);
 
@@ -631,7 +587,6 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 #endif
         if (game.imgui_.check_wireframe_change())
         {
-            window.~StubWindow();
             wfd.FillMode = game.imgui_.wireframe
                 ? D3D11_FILL_WIREFRAME
                 : D3D11_FILL_SOLID;
