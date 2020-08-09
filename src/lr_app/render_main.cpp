@@ -324,6 +324,8 @@ struct PSShader
     ComPtr<ID3D11PixelShader>* ps;
 };
 
+#define XX_LIGHT_MOVING() 0
+
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
 #if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
@@ -576,14 +578,13 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         render_model.light_color = game.imgui_.get_light_color();
         render_model.viewer_position = game.camera_position_;
-#if (1)
-        // render_model.light_position = XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
-        render_model.light_position = game.camera_position_;
-#else
-        const float radius = 20.0f;
+#if (XX_LIGHT_MOVING())
+        const float radius = 10.0f;
         const float cam_x = (sinf(t) * radius);
         const float cam_z = (cosf(t) * radius);
         render_model.light_position = XMVectorSet(cam_x, 0.0f, cam_z, 0.0f);
+#else
+        render_model.light_position = game.camera_position_;
 #endif
         if (game.imgui_.check_wireframe_change())
         {
@@ -617,6 +618,9 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         if (game.imgui_.show_cube)
         {
             // XMMatrixTranspose(XMMatrixIdentity());
+#if (XX_LIGHT_MOVING())
+            render_cube.world = XMMatrixTranspose(XMMatrixTranslation(cam_x, 0, cam_z));
+#endif
             render_cube.render(*game.device_context_.Get()
                 , XMMatrixTranspose(view)
                 , XMMatrixTranspose(projection));
