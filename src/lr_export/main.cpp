@@ -38,6 +38,8 @@ struct AssimpMesh
     std::vector<Index> indices;
     AssimpTexture texture_diffuse;
     AssimpTexture texture_normal;
+    bool has_normals = false;
+    bool has_texture_coords = false;
 };
 
 struct AssimpModel
@@ -59,26 +61,30 @@ static AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
 {
     static_assert(std::is_same_v<float, ai_real>);
 
-    Panic(mesh.mVertices);                // expect to have vertices
-#if (XX_HAS_NORMALS())
-    Panic(mesh.mNormals);                 //   and normals
-#endif
-#if (XX_HAS_TEXTURE_COORDS())
-    Panic(mesh.mTangents);
-    Panic(mesh.mTextureCoords);           //   and texture coords
-    Panic(mesh.mTextureCoords[0]);        //   ... one per vertex
-    Panic(mesh.mNumUVComponents[0] == 2); //   that has only x and y.
-    // A vertex can contain up to 8 different texture coordinates.
-    // We expect to see only one for now.
-    for (unsigned int i = 1; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; ++i)
+    AssimpMesh mesh_data{};
+
+    Panic(mesh.mVertices);                   // expect to have vertices
+    mesh_data.has_normals = !!mesh.mNormals; // normals are optional
+    mesh_data.has_texture_coords = [&]()
     {
-        Panic(!mesh.mTextureCoords[i]);
-    }
-#endif
+        const bool has_uv = mesh.mTangents      // valid tangents
+            && mesh.mTextureCoords              // and texture coords
+            && mesh.mTextureCoords[0]           // ... one per vertex
+            && (mesh.mNumUVComponents[0] == 2); // that has only x and y.
+        if (has_uv)
+        {
+            // A vertex can contain up to 8 different texture coordinates.
+            // We expect to see only one for now.
+            for (unsigned int i = 1; i < AI_MAX_NUMBER_OF_TEXTURECOORDS; ++i)
+            {
+                Panic(!mesh.mTextureCoords[i]);
+            }
+        }
+        return has_uv;
+    }();
 
     Panic(mesh.mPrimitiveTypes == aiPrimitiveType_TRIANGLE);
 
-    AssimpMesh mesh_data{};
     mesh_data.vertices.reserve(mesh.mNumVertices);
     mesh_data.indices.reserve(mesh.mNumFaces * 3u); // expects triangles
 
@@ -91,24 +97,20 @@ static AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
         v.position.y = mesh.mVertices[i].y;
         v.position.z = mesh.mVertices[i].z;
 
-#if (XX_HAS_NORMALS())
-        v.normal.x = mesh.mNormals[i].x;
-        v.normal.y = mesh.mNormals[i].y;
-        v.normal.z = mesh.mNormals[i].z;
-#else
-        v.normal = Vector3f();
-#endif
-
-#if (XX_HAS_TEXTURE_COORDS())
-        v.texture_coord.x = mesh.mTextureCoords[0][i].x;
-        v.texture_coord.y = mesh.mTextureCoords[0][i].y;
-        v.tangent.x = mesh.mTangents[i].x;
-        v.tangent.y = mesh.mTangents[i].y;
-        v.tangent.z = mesh.mTangents[i].z;
-#else
-        v.texture_coord = Vector2f();
-        v.tangent = Vector3f();
-#endif
+        if (mesh_data.has_normals)
+        {
+            v.normal.x = mesh.mNormals[i].x;
+            v.normal.y = mesh.mNormals[i].y;
+            v.normal.z = mesh.mNormals[i].z;
+        }
+        if (mesh_data.has_texture_coords)
+        {
+            v.texture_coord.x = mesh.mTextureCoords[0][i].x;
+            v.texture_coord.y = mesh.mTextureCoords[0][i].y;
+            v.tangent.x = mesh.mTangents[i].x;
+            v.tangent.y = mesh.mTangents[i].y;
+            v.tangent.z = mesh.mTangents[i].z;
+        }
     }
 
     static_assert(sizeof(Index) <= sizeof(unsigned int)
@@ -125,34 +127,33 @@ static AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
         }
     }
 
-#if (XX_HAS_TEXTURE_COORDS())
-    Panic(mesh.mMaterialIndex < scene.mNumMaterials);
-    const aiMaterial& material = *scene.mMaterials[mesh.mMaterialIndex];
-
+    if (mesh_data.has_texture_coords)
     {
-        const unsigned int count = material.GetTextureCount(aiTextureType_DIFFUSE);
-        Panic(count == 1);
-        aiString path;
-        Panic(material.GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn_SUCCESS);
-        mesh_data.texture_diffuse.path.assign(path.C_Str());
-        Panic(path.length == mesh_data.texture_diffuse.path.size());
+        Panic(mesh.mMaterialIndex < scene.mNumMaterials);
+        const aiMaterial& material = *scene.mMaterials[mesh.mMaterialIndex];
 
-        Panic(!mesh_data.texture_diffuse.path.empty());
+        {
+            const unsigned int count = material.GetTextureCount(aiTextureType_DIFFUSE);
+            Panic(count == 1);
+            aiString path;
+            Panic(material.GetTexture(aiTextureType_DIFFUSE, 0, &path) == aiReturn_SUCCESS);
+            mesh_data.texture_diffuse.path.assign(path.C_Str());
+            Panic(path.length == mesh_data.texture_diffuse.path.size());
+
+            Panic(!mesh_data.texture_diffuse.path.empty());
+        }
+
+        {
+            const unsigned int count = material.GetTextureCount(aiTextureType_HEIGHT);
+            Panic(count == 1);
+            aiString path;
+            Panic(material.GetTexture(aiTextureType_HEIGHT, 0, &path) == aiReturn_SUCCESS);
+            mesh_data.texture_normal.path.assign(path.C_Str());
+            Panic(path.length == mesh_data.texture_normal.path.size());
+
+            Panic(!mesh_data.texture_normal.path.empty());
+        }
     }
-
-    {
-        const unsigned int count = material.GetTextureCount(aiTextureType_HEIGHT);
-        Panic(count == 1);
-        aiString path;
-        Panic(material.GetTexture(aiTextureType_HEIGHT, 0, &path) == aiReturn_SUCCESS);
-        mesh_data.texture_normal.path.assign(path.C_Str());
-        Panic(path.length == mesh_data.texture_normal.path.size());
-
-        Panic(!mesh_data.texture_normal.path.empty());
-    }
-#else
-    (void)scene;
-#endif
 
     Panic(!mesh_data.indices.empty());
     Panic(!mesh_data.vertices.empty());
@@ -189,37 +190,38 @@ static AssimpModel Assimp_Load(fs::path file_path)
     Assimp_ProcessNode(*scene, *scene->mRootNode
         , [&](AssimpMesh&& mesh)
     {
-#if (XX_HAS_TEXTURE_COORDS())
-        const AssimpTexture textures[2] = {mesh.texture_diffuse, mesh.texture_normal};
-
-        for (const AssimpTexture& t : textures)
+        if (mesh.has_texture_coords)
         {
-            const fs::path texture_file = dir / t.path;
-            const auto it = std::find_if(std::cbegin(model.materials), std::cend(model.materials)
-                , [&](const AssimpModel::Blob& data)
-            {
-                return (data.path == t.path);
-            });
-            if (it != std::cend(model.materials))
-            {
-                continue;
-            }
+            const AssimpTexture textures[2] = {mesh.texture_diffuse, mesh.texture_normal};
 
-            const std::string path = texture_file.string();
-            int width = 0;
-            int height = 0;
-            int channels = 0;
-            unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
-            Panic(!!data);
-            Panic(channels == c_texture_channels); // RGBA
-            // stbi_image_free(data)
-            auto& blob = model.materials.emplace_back(AssimpModel::Blob{});
-            blob.data = data;
-            blob.path = t.path;
-            blob.width = static_cast<unsigned int>(width);
-            blob.height = static_cast<unsigned int>(height);
+            for (const AssimpTexture& t : textures)
+            {
+                const fs::path texture_file = dir / t.path;
+                const auto it = std::find_if(std::cbegin(model.materials), std::cend(model.materials)
+                    , [&](const AssimpModel::Blob& data)
+                    {
+                        return (data.path == t.path);
+                    });
+                if (it != std::cend(model.materials))
+                {
+                    continue;
+                }
+
+                const std::string path = texture_file.string();
+                int width = 0;
+                int height = 0;
+                int channels = 0;
+                unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+                Panic(!!data);
+                Panic(channels == c_texture_channels); // RGBA
+                // stbi_image_free(data)
+                auto& blob = model.materials.emplace_back(AssimpModel::Blob{});
+                blob.data = data;
+                blob.path = t.path;
+                blob.width = static_cast<unsigned int>(width);
+                blob.height = static_cast<unsigned int>(height);
+            }
         }
-#endif
 
         model.meshes.push_back(std::move(mesh));
     });
@@ -231,15 +233,62 @@ static AssimpModel Assimp_Load(fs::path file_path)
 #  error "Build system missed to specify where raw assets are."
 #endif
 
-int main()
+std::uint16_t GetAllMeshesCapabilities(const std::vector<AssimpMesh>& meshes)
 {
-#if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
-    const fs::path model_file = XX_ASSETS_FOLDER R"(backpack\backpack.obj)";
-#elif (XX_HAS_NORMALS())
-    const fs::path model_file = XX_ASSETS_FOLDER R"(skull\skull.obj)";
-#else
-#  error "Find some predefined model with no Normals."
-#endif
+    Panic(!meshes.empty());
+    std::uint16_t capabilitis = std::uint16_t(Capabilities::Default);
+    const bool has_normals = meshes[0].has_normals;
+    const bool has_texture_coords = meshes[0].has_texture_coords;
+    
+    const bool all_same = std::all_of(meshes.cbegin(), meshes.cend()
+        , [&](const AssimpMesh& mesh)
+    {
+        return (mesh.has_normals == has_normals)
+            && (mesh.has_texture_coords == has_texture_coords);
+    });
+    Panic(all_same);
+
+    if (has_normals)
+    {
+        capabilitis |= std::uint16_t(Capabilities::Normals);
+    }
+    if (has_texture_coords)
+    {
+        capabilitis |= std::uint16_t(Capabilities::TextureCoords);
+        capabilitis |= std::uint16_t(Capabilities::TextureRGBA);
+        capabilitis |= std::uint16_t(Capabilities::Tangents);
+    }
+
+    return capabilitis;
+}
+
+static void LogCapabilities(std::uint16_t capabilities)
+{
+    const struct
+    {
+        const Capabilities flag;
+        const char* const description;
+    } info[] =
+    {
+        {Capabilities::Default,         "vertices with faces/triangles"},
+        {Capabilities::Normals,         "+ normal per vertex"},
+        {Capabilities::TextureCoords,   "+ 2D UV texture mapping"},
+        {Capabilities::TextureRGBA,     "texture is RGBA, 8 bit per channel, sRGB"},
+        {Capabilities::Tangents,        "+ tangents"},
+    };
+    for (const auto& data : info)
+    {
+        if ((capabilities & std::uint16_t(data.flag)) == std::uint16_t(data.flag))
+        {
+            std::printf("    %s\n", data.description);
+        }
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    Panic(argc >= 2);
+    const fs::path model_file = argv[1];
 
     std::printf("Loading '%s' file.\n", model_file.string().c_str());
 
@@ -247,18 +296,10 @@ int main()
     Panic(!model.meshes.empty());
     
     Header header{};
-    header.version_id   = std::uint16_t(0x3);
+    header.version_id   = std::uint16_t(Header::k_current_version);
     header.meshes_count = std::uint32_t(model.meshes.size());
     header.textures_count = std::uint32_t(model.materials.size());
-
-#if (XX_HAS_NORMALS())
-    header.capabilitis |= std::uint16_t(Capabilities::Normals);
-#endif
-#if (XX_HAS_TEXTURE_COORDS())
-    header.capabilitis |= std::uint16_t(Capabilities::TextureCoords);
-    header.capabilitis |= std::uint16_t(Capabilities::TextureRGBA);
-    header.capabilitis |= std::uint16_t(Capabilities::Tangents);
-#endif
+    header.capabilitis = GetAllMeshesCapabilities(model.meshes);
 
     std::uint32_t offset = 0
         + sizeof(header)                                 // Header
@@ -364,4 +405,5 @@ int main()
     Panic(final_size == offset);
 
     std::printf("Done.\n");
+    LogCapabilities(header.capabilitis);
 }

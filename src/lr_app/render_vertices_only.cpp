@@ -16,7 +16,7 @@ struct VerticesVSConstantBuffer
 {
     RenderVertices render{};
     render.device_ = device;
-    render.vertices_.assign(vertices.cbegin(), vertices.cend());
+    render.vertices_.assign(vertices.begin(), vertices.end());
     render.world = DirectX::XMMatrixTranspose(DirectX::XMMatrixIdentity());
     D3D11_BUFFER_DESC desc{};
     // Create vertex buffer.
@@ -48,25 +48,26 @@ void RenderVertices::render(ID3D11DeviceContext& device_context
         return;
     }
     Panic(device_);
+    PanicShadersValid(vs_shader_, ps_shader_);
 
     // Input Assembler.
     UINT stride = sizeof(Vector3f);
     UINT offset = 0;
     device_context.IASetVertexBuffers(0, 1, vertex_buffer_.GetAddressOf(), &stride, &offset);
     device_context.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    device_context.IASetInputLayout(vertex_layout_.Get());
+    device_context.IASetInputLayout(vs_shader_->vs_layout.Get());
 
     // Vertex Shader.
     VerticesVSConstantBuffer vs_constants;
     vs_constants.world = world;
     vs_constants.projection = projection_transposed;
     vs_constants.view = view_transposed;
-    device_context.VSSetShader(vertex_shader_.Get(), 0, 0);
+    device_context.VSSetShader(vs_shader_->vs.Get(), 0, 0);
     device_context.UpdateSubresource(constant_buffer_.Get(), 0, nullptr, &vs_constants, 0, 0);
     device_context.VSSetConstantBuffers(0, 1, constant_buffer_.GetAddressOf());
 
     // Pixel Shader.
-    device_context.PSSetShader(pixel_shader_.Get(), 0, 0);
+    device_context.PSSetShader(ps_shader_->ps.Get(), 0, 0);
 
     // Draw.
     device_context.Draw(UINT(vertices_.size()), 0);

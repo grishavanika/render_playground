@@ -45,16 +45,16 @@ struct RenderModel
         DirectX::XMVECTOR light_color;
         DirectX::XMVECTOR light_position;
         DirectX::XMVECTOR viewer_position;
+        DirectX::XMVECTOR has_texture;
     };
 
     const Model* model;
     std::vector<RenderMesh> meshes;
     std::vector<RenderTexture> textures;
 
-    ComPtr<ID3D11InputLayout> vertex_layout_;
-    ComPtr<ID3D11VertexShader> vertex_shader_;
+    VSShader* vs_shader_ = nullptr;
     ComPtr<ID3D11Buffer> vs_constant_buffer0_;
-    ComPtr<ID3D11PixelShader> pixel_shader_;
+    PSShader* ps_shader_ = nullptr;
     ComPtr<ID3D11Buffer> ps_constant_buffer0_;
     ComPtr<ID3D11SamplerState> sampler_linear_;
 

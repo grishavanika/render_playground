@@ -42,9 +42,6 @@ namespace std
 
 #include <cstdint>
 
-#define XX_HAS_TEXTURE_COORDS() 1
-#define XX_HAS_NORMALS() 1
-
 // RGBA, 8 bits per channel.
 // In the example (backpack/diffuse.png) it's actually
 // DXGI_FORMAT_R8G8B8A8_UNORM_SRGB.
@@ -96,6 +93,8 @@ enum struct Capabilities : std::uint16_t
 
 struct Header
 {
+    static constexpr std::uint16_t k_current_version = 0x4;
+
     std::uint16_t version_id;
     std::uint16_t capabilitis;
     std::uint32_t meshes_count;

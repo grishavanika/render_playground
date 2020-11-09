@@ -71,7 +71,7 @@ extern const ShaderInfo c_vs_basic_phong
     .file_name         = L"" XX_SHADERS_FOLDER "vs_basic_phong_lighting.hlsl",
     .vs_layout         = {c_layout_basic_phong},
     .entry_point_name  = "main_vs",
-    .profile          = "vs_5_0",
+    .profile           = "vs_5_0",
     .dependencies      = {c_basic_phong_deps},
     .defines           = {}
 };
@@ -79,7 +79,7 @@ extern const ShaderInfo c_vs_basic_phong
 extern const ShaderInfo c_ps_basic_phong
 {
     .debug_name         = "ps_basic_phong",
-    .kind              = ShaderInfo::PS,
+    .kind               = ShaderInfo::PS,
     .bytecode           = {k_ps_basic_phong_lighting},
     .file_name          = L"" XX_SHADERS_FOLDER "ps_basic_phong_lighting.hlsl",
     .vs_layout          = {},

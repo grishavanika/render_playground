@@ -9,36 +9,42 @@ cbuffer PSConstantBuffer0 : register(b0)
     float4 LightColor;
     float4 LightPosition; // World Space.
     float4 ViewerPosition;
+    float4 HasTexture;
 };
 
 float4 main_ps(VS_OUTPUT input) : SV_Target
 {
-#if (1) // If diffuse texture present.
-    float3 object_color = (float3)TextureDiffuse.Sample(SamplerLinear, input.Tex);
-    // float3 object_color = float3(1.0, 1.0, 1.0);
+    float3 object_color;
+    float3 normal;
 
-    float3 tangent_normal = (float3)TextureNormal.Sample(SamplerLinear, input.Tex);
-    // sRGB.
-    tangent_normal = pow(abs(tangent_normal), 1/2.2);
+    if (HasTexture.x > 0)
+    {
+        object_color = (float3)TextureDiffuse.Sample(SamplerLinear, input.Tex);
+        // object_color = float3(1.0, 1.0, 1.0);
 
-    tangent_normal = tangent_normal * 2.0 - 1.0; // [0; 1] -> [-1; 1]
-    float3x3 TBN = float3x3(
-          normalize(input.Tangent)
-        , normalize(input.Binormal)
-        , normalize(input.Normal));
+        float3 tangent_normal = (float3)TextureNormal.Sample(SamplerLinear, input.Tex);
+        // sRGB.
+        tangent_normal = pow(abs(tangent_normal), 1/2.2);
 
-    // https://stackoverflow.com/questions/16555669/hlsl-normal-mapping-matrix-multiplication
+        tangent_normal = tangent_normal * 2.0 - 1.0; // [0; 1] -> [-1; 1]
+        float3x3 TBN = float3x3(
+              normalize(input.Tangent)
+            , normalize(input.Binormal)
+            , normalize(input.Normal));
+
+        // https://stackoverflow.com/questions/16555669/hlsl-normal-mapping-matrix-multiplication
 #if (1)
-    float3 normal = mul(tangent_normal, TBN);
+        normal = mul(tangent_normal, TBN);
 #else
-    TBN = transpose(TBN);
-    float3 normal = mul(TBN, tangent_normal);
+        TBN = transpose(TBN);
+        normal = mul(TBN, tangent_normal);
 #endif
-
-#else   // 
-    float3 object_color = float3(1.0, 1.0, 1.0);
-    float3 normal = input.Normal;
-#endif
+    }
+    else
+    {
+        object_color = float3(1.0, 1.0, 1.0);
+        normal = input.Normal;
+    }
 
     // TODO: read more about Phong Model. Example:
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/phong-shader-BRDF

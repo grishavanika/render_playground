@@ -311,30 +311,66 @@ static void TickImGui(GameState& game)
 #  error "Build system missed to specify where shaders are."
 #endif
 
-struct VSShader
+struct AllKnownShaders
 {
-    const ShaderInfo* vs_info;
-    ComPtr<ID3D11VertexShader>* vs;
-    ComPtr<ID3D11InputLayout>* vs_layout;
+    std::vector<VSShader> vs_shaders_;
+    std::vector<PSShader> ps_shaders_;
+
+    static AllKnownShaders Build()
+    {
+        VSShader vs_shaders[] =
+        {
+            {&c_vs_basic_phong},
+            {&c_vs_lines},
+            {&c_vs_vertices_only},
+            {&c_vs_normals},
+        };
+        PSShader ps_shaders[] =
+        {
+            {&c_ps_basic_phong},
+            {&c_ps_lines},
+            {&c_ps_vertices_only},
+            {&c_ps_normals},
+        };
+
+        AllKnownShaders all;
+        all.vs_shaders_.assign(std::begin(vs_shaders), std::end(vs_shaders));
+        all.ps_shaders_.assign(std::begin(ps_shaders), std::end(ps_shaders));
+        return all;
+    }
 };
 
-struct PSShader
+template<typename RenderObject>
+static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
+    , const ShaderInfo& vs, const ShaderInfo& ps)
 {
-    const ShaderInfo* ps_info;
-    ComPtr<ID3D11PixelShader>* ps;
-};
+    for (VSShader& shader : all_shaders.vs_shaders_)
+    {
+        if (shader.vs_info == &vs)
+        {
+            o.vs_shader_ = &shader;
+            break;
+        }
+    }
+    for (PSShader& shader : all_shaders.ps_shaders_)
+    {
+        if (shader.ps_info == &ps)
+        {
+            o.ps_shader_ = &shader;
+            break;
+        }
+    }
 
-#define XX_LIGHT_MOVING() 0
+    Panic(o.vs_shader_);
+    Panic(o.ps_shader_);
+}
+
+#define XX_LIGHT_MOVING() 1
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
-#if (XX_HAS_TEXTURE_COORDS() && XX_HAS_NORMALS())
-    const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
-#elif (XX_HAS_NORMALS())
+    // const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
     const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
-#else
-#  error "Find some predefined model with no Normals."
-#endif
 
     Model model = LoadModel(obj);
 
@@ -474,34 +510,30 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
     ShadersCompiler compiler;
     ShadersWatch watch(compiler);
+    AllKnownShaders known_shaders = AllKnownShaders::Build();
 
     RenderModel render_model = RenderModel::make(*game.device_.Get(), model);
     RenderLines render_lines = RenderLines::make(game.device_);
     RenderVertices render_cube = make_cube_vertices_only(game.device_);
     RenderWithNormals render_cube_normals = make_cube_with_normals(game.device_);
-    const VSShader vs_shaders[] =
-    {
-        {&c_vs_basic_phong, std::addressof(render_model.vertex_shader_), std::addressof(render_model.vertex_layout_)},
-        {&c_vs_lines, std::addressof(render_lines.vertex_shader_), std::addressof(render_lines.vertex_layout_)},
-        {&c_vs_vertices_only, std::addressof(render_cube.vertex_shader_), std::addressof(render_cube.vertex_layout_)},
-        {&c_vs_normals, std::addressof(render_cube_normals.vertex_shader_), std::addressof(render_cube_normals.vertex_layout_)},
-    };
-    const PSShader ps_shaders[] =
-    {
-        {&c_ps_basic_phong, std::addressof(render_model.pixel_shader_)},
-        {&c_ps_lines, std::addressof(render_lines.pixel_shader_)},
-        {&c_ps_vertices_only, std::addressof(render_cube.pixel_shader_)},
-        {&c_ps_normals, std::addressof(render_cube_normals.pixel_shader_)},
-    };
 
-    for (const VSShader& vs : vs_shaders)
+#if (0)
+    SetShadersRef(render_model,        known_shaders, c_vs_basic_phong,   c_ps_basic_phong);
+#else
+    SetShadersRef(render_model,        known_shaders, c_vs_normals,       c_ps_normals);
+#endif
+    SetShadersRef(render_lines,        known_shaders, c_vs_lines,         c_ps_lines);
+    SetShadersRef(render_cube,         known_shaders, c_vs_vertices_only, c_ps_vertices_only);
+    SetShadersRef(render_cube_normals, known_shaders, c_vs_normals,       c_ps_normals);
+
+    for (VSShader& vs : known_shaders.vs_shaders_)
     {
-        compiler.create_vs(*game.device_.Get(), *vs.vs_info, *vs.vs, *vs.vs_layout);
+        compiler.create_vs(*game.device_.Get(), *vs.vs_info, vs.vs, vs.vs_layout);
         watch.watch_changes_to(*vs.vs_info);
     }
-    for (const PSShader& ps : ps_shaders)
+    for (PSShader& ps : known_shaders.ps_shaders_)
     {
-        compiler.create_ps(*game.device_.Get(), *ps.ps_info, *ps.ps);
+        compiler.create_ps(*game.device_.Get(), *ps.ps_info, ps.ps);
         watch.watch_changes_to(*ps.ps_info);
     }
 
@@ -532,24 +564,24 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         if (watch.collect_changes(*game.device_.Get()) > 0)
         {
-            for (const VSShader& vs : vs_shaders)
+            for (VSShader& vs : known_shaders.vs_shaders_)
             {
                 auto patch = watch.fetch_latest(*vs.vs_info);
                 if (patch.vs_shader)
                 {
-                    *vs.vs = std::move(patch.vs_shader);
-                    *vs.vs_layout = std::move(patch.vs_layout);
-                    Panic(*vs.vs);
-                    Panic(*vs.vs_layout);
+                    vs.vs = std::move(patch.vs_shader);
+                    vs.vs_layout = std::move(patch.vs_layout);
+                    Panic(vs.vs);
+                    Panic(vs.vs_layout);
                 }
             }
-            for (const PSShader& ps : ps_shaders)
+            for (PSShader& ps : known_shaders.ps_shaders_)
             {
                 auto patch = watch.fetch_latest(*ps.ps_info);
                 if (patch.ps_shader)
                 {
-                    *ps.ps = std::move(patch.ps_shader);
-                    Panic(*ps.ps);
+                    ps.ps = std::move(patch.ps_shader);
+                    Panic(ps.ps);
                 }
             }
         }

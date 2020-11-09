@@ -18,9 +18,9 @@ struct Vector2f
 struct Vertex
 {
     Vector3f position;
-    Vector3f normal;
-    Vector3f tangent;
-    Vector2f texture_coord; // diffuse
+    Vector3f normal; // optional
+    Vector3f tangent; // optional
+    Vector2f texture_coord; // diffuse, optional
 };
 
 using Index = unsigned int;

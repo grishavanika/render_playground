@@ -39,6 +39,28 @@ struct ShaderInfo
 struct ShadersCompiler;
 struct ShadersWatch;
 
+struct VSShader
+{
+    const ShaderInfo* vs_info;
+    ComPtr<ID3D11VertexShader> vs;
+    ComPtr<ID3D11InputLayout> vs_layout;
+};
+
+struct PSShader
+{
+    const ShaderInfo* ps_info;
+    ComPtr<ID3D11PixelShader> ps;
+};
+
+static void PanicShadersValid(const VSShader* vs_shader, const PSShader* ps_shader)
+{
+    Panic(!!vs_shader);
+    Panic(!!vs_shader->vs_layout);
+    Panic(!!vs_shader->vs);
+    Panic(!!ps_shader);
+    Panic(!!ps_shader->ps);
+}
+
 struct ShadersCompiler
 {
     void create_vs(ID3D11Device& device

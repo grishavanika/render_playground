@@ -1,6 +1,8 @@
 #include "render_model.h"
 #include "shaders_compiler.h"
 
+#include <DirectXMath.h>
+
 static constexpr DXGI_FORMAT GetIndexBufferFormat()
 {
     if constexpr ((sizeof(Index) == 2) && std::is_unsigned_v<Index>)
@@ -162,6 +164,14 @@ void RenderModel::render(ID3D11DeviceContext& device_context
     ps_cb0.light_color = light_color;
     ps_cb0.viewer_position = viewer_position;
     ps_cb0.light_position = light_position;
+    const bool has_texture = (meshes.size() > 0)
+        && GetTexture(*this, meshes[0].ps_texture_diffuse)
+        && GetTexture(*this, meshes[0].ps_texture_normal);
+    ps_cb0.has_texture = has_texture
+        ? DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.0f)
+        : DirectX::XMVectorSet(0.f, 0.f, 0.f, 0.0f);
+
+    PanicShadersValid(vs_shader_, ps_shader_);
 
     for (const RenderMesh& render_mesh : meshes)
     {
@@ -171,13 +181,13 @@ void RenderModel::render(ID3D11DeviceContext& device_context
         device_context.IASetVertexBuffers(0, 1, render_mesh.vertex_buffer.GetAddressOf(), &stride, &offset);
         device_context.IASetIndexBuffer(render_mesh.index_buffer.Get(), GetIndexBufferFormat(), 0);
         device_context.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        device_context.IASetInputLayout(vertex_layout_.Get());
+        device_context.IASetInputLayout(vs_shader_->vs_layout.Get());
         // Vertex Shader.
-        device_context.VSSetShader(vertex_shader_.Get(), nullptr, 0);
+        device_context.VSSetShader(vs_shader_->vs.Get(), nullptr, 0);
         device_context.UpdateSubresource(vs_constant_buffer0_.Get(), 0, nullptr, &vs_cb0, 0, 0);
         device_context.VSSetConstantBuffers(0, 1, vs_constant_buffer0_.GetAddressOf());
         // Pixel Shader.
-        device_context.PSSetShader(pixel_shader_.Get(), nullptr, 0);
+        device_context.PSSetShader(ps_shader_->ps.Get(), nullptr, 0);
         device_context.UpdateSubresource(ps_constant_buffer0_.Get(), 0, nullptr, &ps_cb0, 0, 0);
         device_context.PSSetConstantBuffers(0, 1, ps_constant_buffer0_.GetAddressOf());
         // Use same sampler for both normal & diffuse textures.

@@ -117,22 +117,12 @@ Model LoadModel(const char* filename)
     std::uint32_t needed_size = sizeof(Header);
     Panic(size > needed_size);
     const Header* header = static_cast<const Header*>(data);
-    Panic(header->version_id == 0x3);
-
-    std::uint16_t capabilitis = std::uint16_t(Capabilities::Default);
-#if (XX_HAS_NORMALS())
-    capabilitis |= std::uint16_t(Capabilities::Normals);
-#endif
-#if (XX_HAS_TEXTURE_COORDS())
-    capabilitis |= std::uint16_t(Capabilities::TextureCoords);
-    capabilitis |= std::uint16_t(Capabilities::TextureRGBA);
-    capabilitis |= std::uint16_t(Capabilities::Tangents);
-#endif
-    Panic(header->capabilitis == capabilitis);
+    Panic(header->version_id == Header::k_current_version);
     Panic(header->meshes_count > 0);
-#if (XX_HAS_TEXTURE_COORDS())
-    Panic(header->textures_count > 0);
-#endif
+    if (header->capabilitis & std::uint16_t(Capabilities::TextureCoords))
+    {
+        Panic(header->textures_count > 0);
+    }
 
     needed_size += std::uint32_t(sizeof(MeshData) * header->meshes_count);
     Panic(size > needed_size);

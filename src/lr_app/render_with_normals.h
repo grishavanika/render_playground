@@ -19,9 +19,8 @@ struct RenderWithNormals
     std::vector<NormalsVertex> vertices_;
 
     ComPtr<ID3D11Device> device_ = nullptr;
-    ComPtr<ID3D11VertexShader> vertex_shader_ = nullptr;
-    ComPtr<ID3D11InputLayout> vertex_layout_ = nullptr;
-    ComPtr<ID3D11PixelShader> pixel_shader_ = nullptr;
+    VSShader* vs_shader_ = nullptr;
+    PSShader* ps_shader_ = nullptr;
     ComPtr<ID3D11Buffer> vertex_buffer_ = nullptr;
     ComPtr<ID3D11Buffer> constant_buffer_ = nullptr;
 
