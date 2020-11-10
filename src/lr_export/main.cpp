@@ -329,8 +329,8 @@ static void LogCapabilities(std::uint16_t capabilities)
 int main(int argc, char* argv[])
 {
     Panic(argc >= 3);
-    const fs::path model_file = argv[1];
-    const char* output_path = argv[2];
+    const fs::path model_file = argv[2];
+    const char* output_path = argv[1];
 
     std::printf("Loading '%s' file.\n", model_file.string().c_str());
 

@@ -372,9 +372,10 @@ static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
     // const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
-    const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
+    // const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
     // const char* const obj = XX_PACKAGE_FOLDER R"(T-Rex.lr.bin)";
     // const char* const obj = R"(K:\bunny.obj.lr.bin)";
+    const char* const obj = R"(K:\dragon.obj.lr.bin)";
 
     Model model = LoadModel(obj);
 

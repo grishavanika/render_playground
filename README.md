@@ -2,7 +2,7 @@
 
 ```
 # Convert raw .obj into "simple" internal format.
-lr_export.exe assets\skull\skull.obj assets\_package
+lr_export.exe assets\_package assets\skull\skull.obj
 # Load assets\_package\skull.lr.bin model.
 ```
 
