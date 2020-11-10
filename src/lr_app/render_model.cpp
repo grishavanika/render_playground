@@ -155,7 +155,7 @@ void RenderModel::render(ID3D11DeviceContext& device_context
 {
     // Parameters for VS.
     VSConstantBuffer0 vs_cb0;
-    vs_cb0.world = DirectX::XMMatrixTranspose(world);
+    vs_cb0.world = world;
     vs_cb0.view = view_transposed;
     vs_cb0.projection = projection_transposed;
 

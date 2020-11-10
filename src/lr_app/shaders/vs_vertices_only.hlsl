@@ -1,9 +1,9 @@
 
 cbuffer VSConstantBuffer : register(b0)
 {
-    matrix World;
-    matrix View;
-    matrix Projection;
+    float4x4 World;
+    float4x4 View;
+    float4x4 Projection;
 }
 
 struct VS_OUTPUT
@@ -13,12 +13,9 @@ struct VS_OUTPUT
 
 VS_OUTPUT main_vs(float3 Position : POSITION)
 {
-    float4 p = float4(Position, 1.0);
-
     VS_OUTPUT output;
-    output.Position   = mul(p, World);
-    output.Position   = mul(output.Position, View);
-    output.Position   = mul(output.Position, Projection);
-    // output.Position = p;
+    output.Position = mul(World, float4(Position, 1.0));
+    output.Position = mul(View, output.Position);
+    output.Position = mul(Projection, output.Position);
     return output;
 }

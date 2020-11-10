@@ -33,12 +33,7 @@ float4 main_ps(VS_OUTPUT input) : SV_Target
             , normalize(input.Normal));
 
         // https://stackoverflow.com/questions/16555669/hlsl-normal-mapping-matrix-multiplication
-#if (1)
         normal = mul(tangent_normal, TBN);
-#else
-        TBN = transpose(TBN);
-        normal = mul(TBN, tangent_normal);
-#endif
     }
     else
     {

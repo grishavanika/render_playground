@@ -17,7 +17,7 @@ struct VerticesVSConstantBuffer
     RenderVertices render{};
     render.device_ = device;
     render.vertices_.assign(vertices.begin(), vertices.end());
-    render.world = DirectX::XMMatrixTranspose(DirectX::XMMatrixIdentity());
+    render.world = DirectX::XMMatrixIdentity();
     D3D11_BUFFER_DESC desc{};
     // Create vertex buffer.
     desc.ByteWidth = UINT(render.vertices_.size() * sizeof(Vector3f));

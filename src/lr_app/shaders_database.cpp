@@ -131,7 +131,7 @@ extern const ShaderInfo c_ps_gooch_shading
 {
     .debug_name         = "ps_gooch_shading",
     .kind               = ShaderInfo::PS,
-    .bytecode           = {k_ps_basic_phong_lighting},
+    .bytecode           = {k_ps_gooch_shading},
     .file_name          = L"" XX_SHADERS_FOLDER "ps_gooch_shading.hlsl",
     .vs_layout          = {},
     .entry_point_name   = "main_ps",

@@ -369,89 +369,14 @@ static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
 
 #define XX_LIGHT_MOVING() 1
 
-struct Box3f
-{
-    Vector3f min_;
-    Vector3f max_;
-};
-
-// https://stackoverflow.com/a/58630206
-// http://www.realtimerendering.com/resources/GraphicsGems/gems/TransBox.c
-static void Transform_Box(const XMMATRIX& M, const XMVECTOR& T, const Box3f& A, Box3f* B)
-{
-    float  a, b;
-    float  Amin[3], Amax[3];
-    float  Bmin[3], Bmax[3];
-    int    i, j;
-
-    /*Copy box A into a min array and a max array for easy reference.*/
-
-    Amin[0] = A.min_.x;  Amax[0] = A.max_.x;
-    Amin[1] = A.min_.y;  Amax[1] = A.max_.y;
-    Amin[2] = A.min_.z;  Amax[2] = A.max_.z;
-
-    /* Take care of translation by beginning at T. */
-
-    Bmin[0] = Bmax[0] = XMVectorGetByIndex(T, 0);
-    Bmin[1] = Bmax[1] = XMVectorGetByIndex(T, 1);
-    Bmin[2] = Bmax[2] = XMVectorGetByIndex(T, 2);
-
-    /* Now find the extreme points by considering the product of the */
-    /* min and max with each component of M.  */
-    
-    for (i = 0; i < 3; i++)
-    {
-        for (j = 0; j < 3; j++)
-        {
-            const float v_ = XMVectorGetByIndex(M.r[i], j);
-            a = (v_ * Amin[j]);
-            b = (v_ * Amax[j]);
-            if (a < b)
-            {
-                Bmin[i] += a;
-                Bmax[i] += b;
-            }
-            else
-            {
-                Bmin[i] += b;
-                Bmax[i] += a;
-            }
-        }
-    }
-
-    /* Copy the result into the new box. */
-
-    B->min_.x = Bmin[0];  B->max_.x = Bmax[0];
-    B->min_.y = Bmin[1];  B->max_.y = Bmax[1];
-    B->min_.z = Bmin[2];  B->max_.z = Bmax[2];
-}
-
-// I'm not smart, doing what stackoverflow says:
-// break 4x4 into 3x3 transform and translation
-// then apply Transform_Box() from "Graphics Gems", 1990.
-static Box3f Transform_Box(const Box3f& a, const XMMATRIX& t)
-{
-    XMVECTOR scale;
-    XMVECTOR quaternion;
-    XMVECTOR T;
-    const bool ok = XMMatrixDecompose(&scale, &quaternion, &T, t);
-    Panic(ok);
-
-    XMMATRIX M = XMMatrixRotationQuaternion(quaternion) * XMMatrixScalingFromVector(scale);
-
-    Box3f B;
-    Transform_Box(XMMatrixTranspose(M), T, a, &B);
-    return B;
-}
-
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
     // const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
     const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
     // const char* const obj = XX_PACKAGE_FOLDER R"(T-Rex.lr.bin)";
+    // const char* const obj = R"(K:\bunny.obj.lr.bin)";
 
     Model model = LoadModel(obj);
-    const Box3f model_aabb{model.aabb_min_, model.aabb_max_};
 
     GameState game;
     StubWindow window("xxx_lr");
@@ -624,6 +549,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     // Positive World Z direction. BLUE.
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT3(0.f, 0.f, 1.f));
 
+    render_aabb.add_bb(model.aabb_min_, model.aabb_max_, XMFLOAT3(1.f, 0.f, 0.f));
+
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
     XMMATRIX view = XMMatrixIdentity();
@@ -686,12 +613,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         render_model.world = XMMatrixIdentity()
             * game.imgui_.get_model_scale()
             * game.imgui_.get_model_rotation();
-        { // Re-calculate box properly.
-            const Box3f box = Transform_Box(model_aabb, render_model.world);
-            render_aabb.clear();
-            render_aabb.add_bb(box.min_, box.max_, XMFLOAT3(1.f, 0.f, 0.f));
-        }
-
+        render_aabb.world = render_model.world;
         render_model.light_color = game.imgui_.get_light_color();
         render_model.viewer_position = game.camera_position_;
 #if (XX_LIGHT_MOVING())
@@ -726,38 +648,23 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         if (game.imgui_.show_cube_normals)
         {
-            // XMMatrixTranspose(XMMatrixIdentity());
-            render_cube_normals.render(*game.device_context_.Get()
-                , XMMatrixTranspose(view)
-                , XMMatrixTranspose(projection));
+            render_cube_normals.render(*game.device_context_.Get(), view, projection);
         }
         if (game.imgui_.show_cube)
         {
-            // XMMatrixTranspose(XMMatrixIdentity());
 #if (XX_LIGHT_MOVING())
-            render_cube.world = XMMatrixTranspose(XMMatrixTranslation(cam_x, 0, cam_z));
+            render_cube.world = XMMatrixTranslation(cam_x, 0, cam_z);
 #endif
-            render_cube.render(*game.device_context_.Get()
-                , XMMatrixTranspose(view)
-                , XMMatrixTranspose(projection));
+            render_cube.render(*game.device_context_.Get(), view, projection);
         }
         if (game.imgui_.show_zero_world_space)
         {
-#if (0)
-            render_lines.world = render_model.world;
-#endif
-            render_lines.render(*game.device_context_.Get()
-                , XMMatrixTranspose(view)
-                , XMMatrixTranspose(projection));
+            render_lines.render(*game.device_context_.Get(), view, projection);
         }
         if (game.imgui_.show_model)
         {
-            render_model.render(*game.device_context_.Get()
-                , XMMatrixTranspose(view)
-                , XMMatrixTranspose(projection));
-            render_aabb.render(*game.device_context_.Get()
-                , XMMatrixTranspose(view)
-                , XMMatrixTranspose(projection));
+            render_model.render(*game.device_context_.Get(), view, projection);
+            render_aabb.render(*game.device_context_.Get(), view, projection);
         }
 
         // Rendering

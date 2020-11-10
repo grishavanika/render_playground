@@ -23,10 +23,10 @@ struct ImGuiState
     // Render config.
     bool wireframe = false;
     bool need_change_wireframe = false;
-    bool show_model = false;
+    bool show_model = true;
     bool show_zero_world_space = false;
     bool show_cube = false;
-    bool show_cube_normals = true;
+    bool show_cube_normals = false;
     bool enable_mouse = false;
 
     bool check_wireframe_change()

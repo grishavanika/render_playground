@@ -13,7 +13,7 @@ struct LineVSConstantBuffer
 {
     RenderLines render{};
     render.device_ = device;
-    render.world = DirectX::XMMatrixTranspose(DirectX::XMMatrixIdentity());
+    render.world = DirectX::XMMatrixIdentity();
 
     D3D11_BUFFER_DESC desc{};
 #if (0) // Will be created on resize.
