@@ -67,7 +67,7 @@ void RenderLines::add_bb(const DirectX::BoundingBox& box
     add_lines(points, color);
 }
 
-void RenderLines::add_aabb(const Vector3f& min, const Vector3f& max
+void RenderLines::add_bb(const Vector3f& min, const Vector3f& max
     , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
 {
     DirectX::XMFLOAT3 corners[8];
@@ -114,9 +114,7 @@ void RenderLines::add_aabb(const Vector3f& min, const Vector3f& max
 
 void RenderLines::clear()
 {
-    vertex_buffer_ = nullptr;
     vertices_.clear();
-    vertices_.shrink_to_fit();
 }
 
 void RenderLines::add_lines(const std::span<const DirectX::XMFLOAT3>& points

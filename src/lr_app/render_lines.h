@@ -38,7 +38,7 @@ struct RenderLines
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
     void add_bb(const DirectX::BoundingBox& box
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
-    void add_aabb(const Vector3f& min, const Vector3f& max
+    void add_bb(const Vector3f& min, const Vector3f& max
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
 
     void clear();

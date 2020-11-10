@@ -689,7 +689,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         { // Re-calculate box properly.
             const Box3f box = Transform_Box(model_aabb, render_model.world);
             render_aabb.clear();
-            render_aabb.add_aabb(box.min_, box.max_, XMFLOAT3(1.f, 0.f, 0.f));
+            render_aabb.add_bb(box.min_, box.max_, XMFLOAT3(1.f, 0.f, 0.f));
         }
 
         render_model.light_color = game.imgui_.get_light_color();
