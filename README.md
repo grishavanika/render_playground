@@ -1,4 +1,14 @@
+### Run
 
+```
+# Convert raw .obj into "simple" internal format.
+lr_export.exe assets\skull\skull.obj assets\_package
+# Load assets\_package\skull.lr.bin model.
+```
+
+### Sample
+
+![](sample.png)
 
 ### Build
 

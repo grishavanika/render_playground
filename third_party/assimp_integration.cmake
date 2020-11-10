@@ -59,7 +59,6 @@ else ()
     endif ()
 
     set_target_properties(assimp PROPERTIES FOLDER third_party)
-    set_target_properties(IrrXML PROPERTIES FOLDER third_party)
 
     if (NOT (${gcc} OR ${clang}))
         set_target_properties(zlibstatic PROPERTIES FOLDER third_party)

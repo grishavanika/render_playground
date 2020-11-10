@@ -68,6 +68,8 @@ struct Model
     std::uint32_t textures_count_;
     std::uint32_t memory_size_;
     const std::uint8_t* memory_;
+    Vector3f aabb_min_{};
+    Vector3f aabb_max_{};
 
     Mesh get_mesh(std::uint32_t index) const;
     Texture get_texture(std::uint32_t index) const;
@@ -93,14 +95,17 @@ enum struct Capabilities : std::uint16_t
 
 struct Header
 {
-    static constexpr std::uint16_t k_current_version = 0x4;
+    static constexpr std::uint16_t k_current_version = 0x6;
 
     std::uint16_t version_id;
     std::uint16_t capabilitis;
     std::uint32_t meshes_count;
     std::uint32_t textures_count;
+
+    Vector3f aabb_min;
+    Vector3f aabb_max;
 };
-static_assert(sizeof(Header) == 12);
+static_assert(sizeof(Header) == 36);
 static_assert(std::is_trivial<Header>());
 
 struct MeshData

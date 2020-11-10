@@ -63,7 +63,7 @@ set_source_files_properties(shaders/ps_normals.hlsl PROPERTIES
     VS_SHADER_MODEL               5.0)
 
 set(src_files
-    render_main.cpp
+    main.cpp
     render_model.cpp
     render_lines.cpp
     shaders_database.cpp

@@ -17,6 +17,8 @@ Model::Model(Model&& rhs) noexcept
     , textures_count_(rhs.textures_count_)
     , memory_size_(rhs.memory_size_)
     , memory_(rhs.memory_)
+    , aabb_min_(rhs.aabb_min_)
+    , aabb_max_(rhs.aabb_max_)
 {
     rhs.memory_ = nullptr;
     rhs.memory_size_ = 0;
@@ -131,6 +133,8 @@ Model LoadModel(const char* filename)
 
     const std::uint8_t* start = static_cast<const std::uint8_t*>(data);
     Model m{};
+    m.aabb_min_ = header->aabb_min;
+    m.aabb_max_ = header->aabb_max;
     m.memory_ = start;
     m.meshes_count_ = header->meshes_count;
     m.textures_count_ = header->textures_count;

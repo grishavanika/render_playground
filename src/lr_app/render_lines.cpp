@@ -45,7 +45,7 @@ void RenderLines::add_line(const DirectX::XMFLOAT3& p0
     add_lines(points, color);
 }
 
-void RenderLines::add_bbox(const DirectX::BoundingBox& box
+void RenderLines::add_bb(const DirectX::BoundingBox& box
     , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
 {
     DirectX::XMFLOAT3 corners[8];
@@ -65,6 +65,58 @@ void RenderLines::add_bbox(const DirectX::BoundingBox& box
     }
 
     add_lines(points, color);
+}
+
+void RenderLines::add_aabb(const Vector3f& min, const Vector3f& max
+    , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
+{
+    DirectX::XMFLOAT3 corners[8];
+    corners[0].x = min.x;
+    corners[0].y = min.y;
+    corners[0].z = min.z;
+    corners[1].x = max.x;
+    corners[1].y = min.y;
+    corners[1].z = min.z;
+    corners[2].x = max.x;
+    corners[2].y = max.y;
+    corners[2].z = min.z;
+    corners[3].x = min.x;
+    corners[3].y = max.y;
+    corners[3].z = min.z;
+    corners[4].x = min.x;
+    corners[4].y = min.y;
+    corners[4].z = max.z;
+    corners[5].x = min.x;
+    corners[5].y = max.y;
+    corners[5].z = max.z;
+    corners[6].x = max.x;
+    corners[6].y = max.y;
+    corners[6].z = max.z;
+    corners[7].x = max.x;
+    corners[7].y = min.y;
+    corners[7].z = max.z;
+
+    const int indices[] =
+    {
+        0, 1, 1, 2, 2, 3, 3, 0,
+        3, 5, 5, 4, 4, 0, 4, 7,
+        7, 6, 6, 5, 6, 2, 7, 1
+    };
+
+    DirectX::XMFLOAT3 points[std::size(indices)];
+    for (std::size_t i = 0; i < std::size(indices); ++i)
+    {
+        points[i] = corners[indices[i]];
+    }
+
+    add_lines(points, color);
+}
+
+void RenderLines::clear()
+{
+    vertex_buffer_ = nullptr;
+    vertices_.clear();
+    vertices_.shrink_to_fit();
 }
 
 void RenderLines::add_lines(const std::span<const DirectX::XMFLOAT3>& points

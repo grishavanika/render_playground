@@ -40,6 +40,8 @@ struct AssimpMesh
     AssimpTexture texture_normal;
     bool has_normals = false;
     bool has_texture_coords = false;
+    Vector3f aabb_min;
+    Vector3f aabb_max;
 };
 
 struct AssimpModel
@@ -53,6 +55,8 @@ struct AssimpModel
     };
     std::vector<AssimpMesh> meshes;
     std::vector<Blob> materials;
+    Vector3f aabb_min;
+    Vector3f aabb_max;
 };
 
 // Model's loading with Assimp comes from learnopengl.com:
@@ -67,10 +71,13 @@ static AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
     mesh_data.has_normals = !!mesh.mNormals; // normals are optional
     mesh_data.has_texture_coords = [&]()
     {
+        // #QQQ: clean-up - better names and document the logic behind this.
         const bool has_uv = mesh.mTangents      // valid tangents
             && mesh.mTextureCoords              // and texture coords
             && mesh.mTextureCoords[0]           // ... one per vertex
-            && (mesh.mNumUVComponents[0] == 2); // that has only x and y.
+            && (mesh.mNumUVComponents[0] == 2)  // that has only x and y.
+            && (mesh.mMaterialIndex < scene.mNumMaterials)
+            && (scene.mMaterials[mesh.mMaterialIndex]->GetTextureCount(aiTextureType_DIFFUSE) == 1);
         if (has_uv)
         {
             // A vertex can contain up to 8 different texture coordinates.
@@ -87,6 +94,13 @@ static AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
 
     mesh_data.vertices.reserve(mesh.mNumVertices);
     mesh_data.indices.reserve(mesh.mNumFaces * 3u); // expects triangles
+    
+    mesh_data.aabb_min.x = mesh.mAABB.mMin.x;
+    mesh_data.aabb_min.y = mesh.mAABB.mMin.y;
+    mesh_data.aabb_min.z = mesh.mAABB.mMin.z;
+    mesh_data.aabb_max.x = mesh.mAABB.mMax.x;
+    mesh_data.aabb_max.y = mesh.mAABB.mMax.y;
+    mesh_data.aabb_max.z = mesh.mAABB.mMax.z;
 
     for (unsigned int i = 0; i < mesh.mNumVertices; ++i)
     {
@@ -174,11 +188,35 @@ static void Assimp_ProcessNode(const aiScene& scene, const aiNode& node, F on_ne
     }
 }
 
+static Vector3f MaxVector3f()
+{
+    return {FLT_MAX, FLT_MAX, FLT_MAX};
+}
+
+static Vector3f MinVector3f()
+{
+    return {FLT_MIN, FLT_MIN, FLT_MIN};
+}
+
+static void UpdateAABB(AssimpModel& model, const AssimpMesh& mesh)
+{
+    if (mesh.aabb_min.x < model.aabb_min.x) model.aabb_min.x = mesh.aabb_min.x;
+    if (mesh.aabb_min.y < model.aabb_min.y) model.aabb_min.y = mesh.aabb_min.y;
+    if (mesh.aabb_min.z < model.aabb_min.z) model.aabb_min.z = mesh.aabb_min.z;
+
+    if (mesh.aabb_max.x > model.aabb_max.x) model.aabb_max.x = mesh.aabb_max.x;
+    if (mesh.aabb_max.y > model.aabb_max.y) model.aabb_max.y = mesh.aabb_max.y;
+    if (mesh.aabb_max.z > model.aabb_max.z) model.aabb_max.z = mesh.aabb_max.z;
+}
+
 static AssimpModel Assimp_Load(fs::path file_path)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(file_path.string().c_str()
-        , aiProcess_Triangulate | aiProcess_CalcTangentSpace);
+        , unsigned(
+            aiProcess_Triangulate
+            | aiProcess_CalcTangentSpace
+            | aiProcess_GenBoundingBoxes));
     // aiProcess_FlipUVs - no need for DirectX.
     Panic(scene);
     Panic((scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != AI_SCENE_FLAGS_INCOMPLETE);
@@ -186,6 +224,8 @@ static AssimpModel Assimp_Load(fs::path file_path)
 
     const fs::path dir = file_path.parent_path();
     AssimpModel model;
+    model.aabb_min = MaxVector3f();
+    model.aabb_max = MinVector3f();
 
     Assimp_ProcessNode(*scene, *scene->mRootNode
         , [&](AssimpMesh&& mesh)
@@ -223,6 +263,7 @@ static AssimpModel Assimp_Load(fs::path file_path)
             }
         }
 
+        UpdateAABB(model, mesh);
         model.meshes.push_back(std::move(mesh));
     });
 
@@ -287,8 +328,9 @@ static void LogCapabilities(std::uint16_t capabilities)
 
 int main(int argc, char* argv[])
 {
-    Panic(argc >= 2);
+    Panic(argc >= 3);
     const fs::path model_file = argv[1];
+    const char* output_path = argv[2];
 
     std::printf("Loading '%s' file.\n", model_file.string().c_str());
 
@@ -300,6 +342,8 @@ int main(int argc, char* argv[])
     header.meshes_count = std::uint32_t(model.meshes.size());
     header.textures_count = std::uint32_t(model.materials.size());
     header.capabilitis = GetAllMeshesCapabilities(model.meshes);
+    header.aabb_min = model.aabb_min;
+    header.aabb_max = model.aabb_max;
 
     std::uint32_t offset = 0
         + sizeof(header)                                 // Header
@@ -354,8 +398,7 @@ int main(int argc, char* argv[])
     const std::uint32_t final_size = offset;
     offset = 0;
 
-    fs::path bin_file = model_file.parent_path().parent_path();
-    bin_file /= "_package";
+    fs::path bin_file = output_path;
     bin_file /= (model_file.stem().string() + ".lr.bin");
     const std::string binary_file = bin_file.string();
 

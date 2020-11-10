@@ -6,6 +6,7 @@
 
 #include "utils.h"
 #include "shaders_compiler.h"
+#include "vertex.h"
 
 // Mostly from:
 // https://github.com/GPUOpen-LibrariesAndSDKs/GPUParticles11/blob/master/amd_sdk/src/LineRender.h
@@ -35,8 +36,12 @@ struct RenderLines
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
     void add_lines(const std::span<const DirectX::XMFLOAT3>& points
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
-    void add_bbox(const DirectX::BoundingBox& box
+    void add_bb(const DirectX::BoundingBox& box
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
+    void add_aabb(const Vector3f& min, const Vector3f& max
+        , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
+
+    void clear();
 
     void render(ID3D11DeviceContext& device_context
         , const DirectX::XMMATRIX& view_transposed

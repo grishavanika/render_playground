@@ -1,7 +1,7 @@
 set(exe_name lr_export)
 
 set(src_files
-    export_main.cpp
+    main.cpp
     )
 set(header_files
     )
