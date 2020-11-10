@@ -321,6 +321,7 @@ struct AllKnownShaders
         VSShader vs_shaders[] =
         {
             {&c_vs_basic_phong},
+            {&c_vs_gooch_shading},
             {&c_vs_lines},
             {&c_vs_vertices_only},
             {&c_vs_normals},
@@ -328,6 +329,7 @@ struct AllKnownShaders
         PSShader ps_shaders[] =
         {
             {&c_ps_basic_phong},
+            {&c_ps_gooch_shading},
             {&c_ps_lines},
             {&c_ps_vertices_only},
             {&c_ps_normals},
@@ -595,11 +597,9 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     RenderVertices render_cube = make_cube_vertices_only(game.device_);
     RenderWithNormals render_cube_normals = make_cube_with_normals(game.device_);
 
-#if (0)
-    SetShadersRef(render_model,        known_shaders, c_vs_basic_phong,   c_ps_basic_phong);
-#else
-    SetShadersRef(render_model,        known_shaders, c_vs_normals,       c_ps_normals);
-#endif
+    // SetShadersRef(render_model,        known_shaders, c_vs_basic_phong,   c_ps_basic_phong);
+    // SetShadersRef(render_model,        known_shaders, c_vs_normals,       c_ps_normals);
+    SetShadersRef(render_model,        known_shaders, c_vs_gooch_shading, c_ps_gooch_shading);
     SetShadersRef(render_lines,        known_shaders, c_vs_lines,         c_ps_lines);
     SetShadersRef(render_aabb,         known_shaders, c_vs_lines,         c_ps_lines);
     SetShadersRef(render_cube,         known_shaders, c_vs_vertices_only, c_ps_vertices_only);

@@ -9,6 +9,9 @@
 #include "shaders/vs_basic_phong_lighting.h"
 #include "shaders/ps_basic_phong_lighting.h"
 
+#include "shaders/vs_gooch_shading.h"
+#include "shaders/ps_gooch_shading.h"
+
 #include "shaders/vs_vertices_only.h"
 #include "shaders/ps_vertices_only.h"
 
@@ -76,12 +79,60 @@ extern const ShaderInfo c_vs_basic_phong
     .defines           = {}
 };
 
+static const D3D11_INPUT_ELEMENT_DESC c_layout_gooch_shading[] =
+{
+    {
+        .SemanticName = "position",
+        .SemanticIndex = 0,
+        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
+        .InputSlot = 0,
+        .AlignedByteOffset = offsetof(Vertex, position),
+        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+        .InstanceDataStepRate = 0
+    },
+    {
+        .SemanticName = "normal",
+        .SemanticIndex = 0,
+        .Format = DXGI_FORMAT_R32G32B32_FLOAT,
+        .InputSlot = 0,
+        .AlignedByteOffset = offsetof(Vertex, normal),
+        .InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA,
+        .InstanceDataStepRate = 0
+    },
+};
+
+extern const ShaderInfo c_vs_gooch_shading
+{
+    .debug_name        = "vs_gooch_shading",
+    .kind              = ShaderInfo::VS,
+    .bytecode          = {k_vs_gooch_shading},
+    .file_name         = L"" XX_SHADERS_FOLDER "vs_gooch_shading.hlsl",
+    .vs_layout         = {c_layout_gooch_shading},
+    .entry_point_name  = "main_vs",
+    .profile           = "vs_5_0",
+    .dependencies      = {c_basic_phong_deps},
+    .defines           = {}
+};
+
 extern const ShaderInfo c_ps_basic_phong
 {
     .debug_name         = "ps_basic_phong",
     .kind               = ShaderInfo::PS,
     .bytecode           = {k_ps_basic_phong_lighting},
     .file_name          = L"" XX_SHADERS_FOLDER "ps_basic_phong_lighting.hlsl",
+    .vs_layout          = {},
+    .entry_point_name   = "main_ps",
+    .profile            = "ps_5_0",
+    .dependencies       = {c_basic_phong_deps},
+    .defines            = {}
+};
+
+extern const ShaderInfo c_ps_gooch_shading
+{
+    .debug_name         = "ps_gooch_shading",
+    .kind               = ShaderInfo::PS,
+    .bytecode           = {k_ps_basic_phong_lighting},
+    .file_name          = L"" XX_SHADERS_FOLDER "ps_gooch_shading.hlsl",
     .vs_layout          = {},
     .entry_point_name   = "main_ps",
     .profile            = "ps_5_0",
