@@ -5,6 +5,13 @@
 
 #include <DirectXMath.h>
 
+enum class LightMode : int
+{
+    Static_AtCameraPosition,
+    Moving_Active,
+    Moving_Paused,
+};
+
 struct ImGuiState
 {
     bool show_demo_window = false;
@@ -20,12 +27,17 @@ struct ImGuiState
     // http://hugin.sourceforge.net/docs/manual/Image_positioning_model.html#:~:text=Positive%20Roll%20values%20mean%20the,%2B90%C2%B0%20(Zenith).
     ImVec4 model_rotation = ImVec4(0.f, 180.f, 0.f, 0.f);
 
+    int model_vs_index = 0;
+    int model_ps_index = 0;
+
     // Render config.
     bool wireframe = false;
     bool need_change_wireframe = false;
     bool show_model = true;
     bool show_zero_world_space = false;
-    bool show_cube = false;
+    bool show_light_cube = false;
+    LightMode light_mode = LightMode::Moving_Active;
+    float light_move_radius = 10.f;
     bool show_cube_normals = false;
     bool enable_mouse = false;
 

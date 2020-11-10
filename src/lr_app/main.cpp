@@ -268,55 +268,12 @@ static void TickInput(GameState& game)
     }
 }
 
-static void TickImGui(GameState& game)
-{
-    if (game.imgui_.show_demo_window)
-    {
-        ImGui::ShowDemoWindow(&game.imgui_.show_demo_window);
-    }
-    if (!game.imgui_.show)
-    {
-        return;
-    }
-
-    ImGuiState& imgui = game.imgui_;
-    if (ImGui::Begin("Tweaks", &imgui.show))
-    {
-        (void)ImGui::Checkbox("Enable Mouse (M)", &imgui.enable_mouse);
-        ImGui::SameLine();
-        imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
-        (void)ImGui::Checkbox("Show model", &imgui.show_model);
-        (void)ImGui::Checkbox("Show zero world space", &imgui.show_zero_world_space);
-        (void)ImGui::Checkbox("Show cube", &imgui.show_cube);
-        (void)ImGui::Checkbox("Show cube (with normals)", &imgui.show_cube_normals);
-
-        (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
-        (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
-        (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 32.f);
-        
-        (void)ImGui::SliderFloat3("Model rotation (Pitch, Yaw, Roll)", (float*)&imgui.model_rotation, -180., 180.f);
-        imgui.model_rotation.x = std::clamp(imgui.model_rotation.x, -90.f, 90.f);
-
-        (void)ImGui::SliderFloat3("Camera position", (float*)&game.camera_position_, -100.f, 100.f);
-
-        (void)ImGui::Checkbox("ImGui Demo", &imgui.show_demo_window);
-    }
-    ImGui::End();
-}
-
-#if !defined(XX_PACKAGE_FOLDER)
-#  error "Build system missed to specify where package (binaries/data) is."
-#endif
-#if !defined(XX_SHADERS_FOLDER)
-#  error "Build system missed to specify where shaders are."
-#endif
-
 struct AllKnownShaders
 {
     std::vector<VSShader> vs_shaders_;
     std::vector<PSShader> ps_shaders_;
 
-    static AllKnownShaders Build()
+    static AllKnownShaders BuildKnownAtCompileTime()
     {
         VSShader vs_shaders[] =
         {
@@ -342,6 +299,134 @@ struct AllKnownShaders
     }
 };
 
+
+static void TickImGui(GameState& game, RenderModel& render_model, AllKnownShaders& known_shaders)
+{
+    if (game.imgui_.show_demo_window)
+    {
+        ImGui::ShowDemoWindow(&game.imgui_.show_demo_window);
+    }
+    if (!game.imgui_.show)
+    {
+        return;
+    }
+
+    ImGuiState& imgui = game.imgui_;
+    if (ImGui::Begin("Tweaks", &imgui.show))
+    {
+        (void)ImGui::Checkbox("Enable Mouse (M)", &imgui.enable_mouse);
+        ImGui::SameLine();
+        imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
+        (void)ImGui::Checkbox("Show model", &imgui.show_model);
+        (void)ImGui::Checkbox("Show zero world space (red = x, green = y, blue = z)", &imgui.show_zero_world_space);
+        (void)ImGui::Checkbox("Show light cube", &imgui.show_light_cube);
+        const char* items[] = {"Static_AtCameraPosition", "Moving_Active", "Moving_Paused"};
+        ImGui::Combo("Light mode", reinterpret_cast<int*>(&imgui.light_mode), items, IM_ARRAYSIZE(items));
+        (void)ImGui::SliderFloat("Light move radius", &imgui.light_move_radius , 0.01f, 32.0f);
+
+        (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
+        (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
+        (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 8.f);
+        
+        (void)ImGui::SliderFloat3("Model rotation (Pitch, Yaw, Roll)", (float*)&imgui.model_rotation, -180., 180.f);
+        imgui.model_rotation.x = std::clamp(imgui.model_rotation.x, -90.f, 90.f);
+
+        (void)ImGui::SliderFloat3("Camera position", (float*)&game.camera_position_, -100.f, 100.f);
+
+        ImGui::Separator();
+        (void)ImGui::Checkbox("ImGui Demo", &imgui.show_demo_window);
+        ImGui::Separator();
+
+        int used_vs_now = 0;
+        int used_ps_now = 0;
+
+        ImGui::PushID("Vertex shaders");
+        ImGui::BeginGroup();
+        for (int index = 0, count = int(known_shaders.vs_shaders_.size()); index < count; ++index)
+        {
+            const VSShader& vs = known_shaders.vs_shaders_[std::size_t(index)];
+            if (&vs == render_model.vs_shader_)
+            {
+                used_vs_now = index;
+                break;
+            }
+        }
+        for (int index = 0, count = int(known_shaders.vs_shaders_.size()); index < count; ++index)
+        {
+            const VSShader& vs = known_shaders.vs_shaders_[std::size_t(index)];
+            if (used_vs_now == index)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0.f, 1.f));
+            }
+            ImGui::RadioButton(vs.vs_info->debug_name, &imgui.model_vs_index, index);
+            if (used_vs_now == index)
+            {
+                ImGui::PopStyleColor();
+            }
+        }
+        ImGui::EndGroup();
+        ImGui::PopID();
+        ImGui::PushID("Pixel shaders");
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        for (int index = 0, count = int(known_shaders.ps_shaders_.size()); index < count; ++index)
+        {
+            const PSShader& ps = known_shaders.ps_shaders_[std::size_t(index)];
+            if (&ps == render_model.ps_shader_)
+            {
+                used_ps_now = index;
+                break;
+            }
+        }
+        for (int index = 0, count = int(known_shaders.ps_shaders_.size()); index < count; ++index)
+        {
+            const PSShader& ps = known_shaders.ps_shaders_[std::size_t(index)];
+            if (used_ps_now == index)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0.f, 1.f));
+            }
+            ImGui::RadioButton(ps.ps_info->debug_name, &imgui.model_ps_index, index);
+            if (used_ps_now == index)
+            {
+                ImGui::PopStyleColor();
+            }
+        }
+        ImGui::EndGroup();
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        if ((used_vs_now != imgui.model_vs_index)
+            || (used_ps_now != imgui.model_ps_index))
+        {
+            if (ImGui::Button("Apply changes"))
+            {
+                if (used_vs_now != imgui.model_vs_index)
+                {
+                    render_model.vs_shader_ = &known_shaders.vs_shaders_[imgui.model_vs_index];
+                }
+                if (used_ps_now != imgui.model_ps_index)
+                {
+                    render_model.ps_shader_ = &known_shaders.ps_shaders_[imgui.model_ps_index];
+                }
+            }
+            if (ImGui::Button("Reset"))
+            {
+                imgui.model_vs_index = used_vs_now;
+                imgui.model_ps_index = used_ps_now;
+            }
+        }
+        ImGui::EndGroup();
+    }
+    ImGui::End();
+}
+
+#if !defined(XX_PACKAGE_FOLDER)
+#  error "Build system missed to specify where package (binaries/data) is."
+#endif
+#if !defined(XX_SHADERS_FOLDER)
+#  error "Build system missed to specify where shaders are."
+#endif
+
 template<typename RenderObject>
 static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
     , const ShaderInfo& vs, const ShaderInfo& ps)
@@ -366,8 +451,6 @@ static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
     Panic(o.vs_shader_);
     Panic(o.ps_shader_);
 }
-
-#define XX_LIGHT_MOVING() 1
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
@@ -515,21 +598,19 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
     ShadersCompiler compiler;
     ShadersWatch watch(compiler);
-    AllKnownShaders known_shaders = AllKnownShaders::Build();
+    AllKnownShaders known_shaders = AllKnownShaders::BuildKnownAtCompileTime();
 
     RenderModel render_model = RenderModel::make(*game.device_.Get(), model);
     RenderLines render_lines = RenderLines::make(game.device_);
-    RenderLines render_aabb = RenderLines::make(game.device_);
-    RenderVertices render_cube = make_cube_vertices_only(game.device_);
-    RenderWithNormals render_cube_normals = make_cube_with_normals(game.device_);
+    RenderLines render_bb = RenderLines::make(game.device_);
+    RenderVertices render_light_cube = make_cube_vertices_only(game.device_);
 
     // SetShadersRef(render_model,        known_shaders, c_vs_basic_phong,   c_ps_basic_phong);
     // SetShadersRef(render_model,        known_shaders, c_vs_normals,       c_ps_normals);
     SetShadersRef(render_model,        known_shaders, c_vs_gooch_shading, c_ps_gooch_shading);
     SetShadersRef(render_lines,        known_shaders, c_vs_lines,         c_ps_lines);
-    SetShadersRef(render_aabb,         known_shaders, c_vs_lines,         c_ps_lines);
-    SetShadersRef(render_cube,         known_shaders, c_vs_vertices_only, c_ps_vertices_only);
-    SetShadersRef(render_cube_normals, known_shaders, c_vs_normals,       c_ps_normals);
+    SetShadersRef(render_bb,           known_shaders, c_vs_lines,         c_ps_lines);
+    SetShadersRef(render_light_cube,   known_shaders, c_vs_vertices_only, c_ps_vertices_only);
 
     for (VSShader& vs : known_shaders.vs_shaders_)
     {
@@ -550,7 +631,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     // Positive World Z direction. BLUE.
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT3(0.f, 0.f, 1.f));
 
-    render_aabb.add_bb(model.aabb_min_, model.aabb_max_, XMFLOAT3(1.f, 0.f, 0.f));
+    render_bb.add_bb(model.aabb_min_, model.aabb_max_, XMFLOAT3(1.f, 0.f, 0.f));
 
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
@@ -598,7 +679,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        TickImGui(game);
+        TickImGui(game, render_model, known_shaders);
         TickInput(game);
 
         projection = XMMatrixPerspectiveFovLH(game.fov_y_
@@ -614,17 +695,26 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         render_model.world = XMMatrixIdentity()
             * game.imgui_.get_model_scale()
             * game.imgui_.get_model_rotation();
-        render_aabb.world = render_model.world;
+        render_bb.world = render_model.world;
         render_model.light_color = game.imgui_.get_light_color();
         render_model.viewer_position = game.camera_position_;
-#if (XX_LIGHT_MOVING())
-        const float radius = 10.0f;
-        const float cam_x = (sinf(t) * radius);
-        const float cam_z = (cosf(t) * radius);
-        render_model.light_position = XMVectorSet(cam_x, 0.0f, cam_z, 0.0f);
-#else
-        render_model.light_position = game.camera_position_;
-#endif
+
+        switch (game.imgui_.light_mode)
+        {
+        case LightMode::Moving_Active:
+        {
+            const float cam_x = (sinf(t) * game.imgui_.light_move_radius);
+            const float cam_z = (cosf(t) * game.imgui_.light_move_radius);
+            render_model.light_position = XMVectorSet(cam_x, 0.0f, cam_z, 0.0f);
+            break;
+        }
+        case LightMode::Moving_Paused:
+            break;
+        case LightMode::Static_AtCameraPosition:
+            render_model.light_position = game.camera_position_;
+            break;
+        }
+
         if (game.imgui_.check_wireframe_change())
         {
             wfd.FillMode = game.imgui_.wireframe
@@ -647,16 +737,10 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         game.device_context_->RSSetState(rasterizer_state.Get());
         game.device_context_->RSSetViewports(1, &game.vp_);
 
-        if (game.imgui_.show_cube_normals)
+        if (game.imgui_.show_light_cube)
         {
-            render_cube_normals.render(*game.device_context_.Get(), view, projection);
-        }
-        if (game.imgui_.show_cube)
-        {
-#if (XX_LIGHT_MOVING())
-            render_cube.world = XMMatrixTranslation(cam_x, 0, cam_z);
-#endif
-            render_cube.render(*game.device_context_.Get(), view, projection);
+            render_light_cube.world = XMMatrixTranslationFromVector(render_model.light_position);
+            render_light_cube.render(*game.device_context_.Get(), view, projection);
         }
         if (game.imgui_.show_zero_world_space)
         {
@@ -665,7 +749,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         if (game.imgui_.show_model)
         {
             render_model.render(*game.device_context_.Get(), view, projection);
-            render_aabb.render(*game.device_context_.Get(), view, projection);
+            render_bb.render(*game.device_context_.Get(), view, projection);
         }
 
         // Rendering
