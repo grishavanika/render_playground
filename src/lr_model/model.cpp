@@ -26,6 +26,16 @@ Model::Model(Model&& rhs) noexcept
     rhs.textures_count_ = 0;
 }
 
+Model& Model::operator=(Model&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        this->~Model();
+        new(this) Model(std::move(rhs));
+    }
+    return *this;
+}
+
 Model::~Model()
 {
     if (memory_)
@@ -100,36 +110,44 @@ Texture Model::get_texture(std::uint32_t index) const
     return texture;
 }
 
-Model LoadModel(const char* filename)
+outcome::result<Model> LoadModel(const char* filename)
 {
-    FILE* f = nullptr;
-    const errno_t e = fopen_s(&f, filename, "rb");
-    Panic(!e);
-    Panic(fseek(f, 0, SEEK_END) == 0);
-    const long int ssize = ftell(f);
-    Panic(ssize != -1);
-    const size_t size = size_t(ssize);
-    Panic(fseek(f, 0, SEEK_SET) == 0);
-    void* data = malloc(size);
-    Panic(!!data);
-    Panic(fread(data, 1, size, f) == size);
-    fclose(f);
+    void* data = nullptr;
+    size_t size = 0;
+    {
+        FILE* f = nullptr;
+        const errno_t e = fopen_s(&f, filename, "rb");
+        if (e) return outcome::failure(std::error_code(int(e), std::system_category()));
+        int set = fseek(f, 0, SEEK_END);
+        if (set != 0) return outcome::failure(todo::not_implemented);
+        const long int ssize = ftell(f);
+        if (ssize == -1)  return outcome::failure(todo::not_implemented);
+        size = size_t(ssize);
+        set = fseek(f, 0, SEEK_SET);
+        if (set != 0) return outcome::failure(todo::not_implemented);
+        data = malloc(size);
+        if (!data) return outcome::failure(todo::not_implemented);
+        size_t actually_read = fread(data, 1, size, f);
+        fclose(f);
+        if (actually_read != size) return outcome::failure(todo::not_implemented);
+    }
 
     // UB everywhere.
     std::uint32_t needed_size = sizeof(Header);
-    Panic(size > needed_size);
+    if (size <= needed_size) return outcome::failure(todo::not_implemented);
     const Header* header = static_cast<const Header*>(data);
-    Panic(header->version_id == Header::k_current_version);
-    Panic(header->meshes_count > 0);
-    if (header->capabilitis & std::uint16_t(Capabilities::TextureCoords))
+    if (header->version_id != Header::k_current_version) return outcome::failure(todo::not_implemented);
+    if (header->meshes_count == 0) return outcome::failure(todo::not_implemented);
+    if ((header->capabilitis & std::uint16_t(Capabilities::TextureCoords))
+        && (header->textures_count == 0))
     {
-        Panic(header->textures_count > 0);
+        return outcome::failure(todo::not_implemented);
     }
 
     needed_size += std::uint32_t(sizeof(MeshData) * header->meshes_count);
-    Panic(size > needed_size);
+    if (size <= needed_size) return outcome::failure(todo::not_implemented);
     needed_size += std::uint32_t(sizeof(TextureData) * header->textures_count);
-    Panic(size > needed_size);
+    if (size <= needed_size) return outcome::failure(todo::not_implemented);
 
     const std::uint8_t* start = static_cast<const std::uint8_t*>(data);
     Model m{};
@@ -139,5 +157,5 @@ Model LoadModel(const char* filename)
     m.meshes_count_ = header->meshes_count;
     m.textures_count_ = header->textures_count;
     m.memory_size_ = std::uint32_t(size);
-    return m;
+    return outcome::success(std::move(m));
 }

@@ -60,6 +60,8 @@ struct GameState
     ComPtr<IDXGISwapChain> swap_chain_;
     ComPtr<ID3D11RenderTargetView> render_target_view_;
     ComPtr<ID3D11DepthStencilView> depth_buffer_;
+
+    std::string model_to_load_file_;
 };
 #pragma warning(pop)
 
@@ -233,6 +235,30 @@ void AddMessageHandling(StubWindow& window, GameState& game)
         }
         return ::DefWindowProc(hwnd, message, wparam, lparam);
     });
+    window.on_message(WM_DROPFILES
+        , [&game](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
+        {
+            HDROP drop = reinterpret_cast<HDROP>(wparam);
+            UINT files_count = ::DragQueryFileA(drop, UINT(0xFFFFFFFF), nullptr, 0);
+            Panic(files_count != 0);
+            if (files_count > 1)
+            {
+                // We don't support multiple files drop.
+                ::DragFinish(drop);
+                return ::DefWindowProc(hwnd, message, wparam, lparam);
+            }
+            UINT length = ::DragQueryFileA(drop, UINT(0), nullptr, 0);
+            Panic(length != 0);
+            std::string file;
+            file.resize(length + 1);
+            UINT final_length = ::DragQueryFileA(drop, UINT(0), &file[0], UINT(file.size()));
+            Panic(final_length != 0);
+            file.resize(final_length);
+            ::DragFinish(drop);
+
+            game.model_to_load_file_ = std::move(file);
+            return ::DefWindowProc(hwnd, message, wparam, lparam);
+        });
 }
 
 static void TickInput(GameState& game)
@@ -454,16 +480,11 @@ static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
-    // const char* const obj = XX_PACKAGE_FOLDER R"(backpack.lr.bin)";
-    // const char* const obj = XX_PACKAGE_FOLDER R"(skull.lr.bin)";
-    // const char* const obj = XX_PACKAGE_FOLDER R"(T-Rex.lr.bin)";
-    // const char* const obj = R"(K:\bunny.obj.lr.bin)";
-    const char* const obj = R"(K:\dragon.obj.lr.bin)";
-
-    Model model = LoadModel(obj);
-
     GameState game;
+    game.model_to_load_file_ = XX_PACKAGE_FOLDER R"(dragon.lr.bin)";
+
     StubWindow window("xxx_lr");
+    ::DragAcceptFiles(window.wnd(), TRUE); // Accept WM_DROPFILES.
     AddMessageHandling(window, game);
 
     Panic(::ShowWindow(window.wnd(), SW_SHOW) == 0/*was previously hidden*/);
@@ -595,6 +616,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         return FALSE;
     });
     ///////////////////////////////////////////////////////////////////////////
+    Model model;
 
     ShadersCompiler compiler;
     ShadersWatch watch(compiler);
@@ -605,9 +627,6 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     RenderLines render_bb = RenderLines::make(game.device_);
     RenderVertices render_light_cube = make_cube_vertices_only(game.device_);
 
-    // SetShadersRef(render_model,        known_shaders, c_vs_basic_phong,   c_ps_basic_phong);
-    // SetShadersRef(render_model,        known_shaders, c_vs_normals,       c_ps_normals);
-    SetShadersRef(render_model,        known_shaders, c_vs_gooch_shading, c_ps_gooch_shading);
     SetShadersRef(render_lines,        known_shaders, c_vs_lines,         c_ps_lines);
     SetShadersRef(render_bb,           known_shaders, c_vs_lines,         c_ps_lines);
     SetShadersRef(render_light_cube,   known_shaders, c_vs_vertices_only, c_ps_vertices_only);
@@ -631,8 +650,6 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     // Positive World Z direction. BLUE.
     render_lines.add_line(XMFLOAT3(0.f, 0.f, 0.f), XMFLOAT3(0.f, 0.f, 1.f), XMFLOAT3(0.f, 0.f, 1.f));
 
-    render_bb.add_bb(model.aabb_min_, model.aabb_max_, XMFLOAT3(1.f, 0.f, 0.f));
-
     // Initialize the view matrix.
     XMMATRIX projection = XMMatrixIdentity();
     XMMATRIX view = XMMatrixIdentity();
@@ -648,6 +665,20 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
             continue;
+        }
+
+        if (game.model_to_load_file_.size() > 0)
+        {
+            auto maybe_model = LoadModel(game.model_to_load_file_.c_str());
+            game.model_to_load_file_.clear();
+            if (maybe_model)
+            {
+                model = std::move(maybe_model.value());
+                render_model = RenderModel::make(*game.device_.Get(), model);
+                SetShadersRef(render_model, known_shaders, c_vs_gooch_shading, c_ps_gooch_shading);
+                render_bb.clear();
+                render_bb.add_bb(model.aabb_min_, model.aabb_max_, XMFLOAT3(1.f, 0.f, 0.f));
+            }
         }
 
         if (watch.collect_changes(*game.device_.Get()) > 0)

@@ -1,5 +1,6 @@
 #pragma once
 #include "vertex.h"
+#include "utils_outcome.h"
 
 #if (__has_include(<span>))
 #  include <span>
@@ -42,6 +43,9 @@ namespace std
 
 #include <cstdint>
 
+struct Model;
+outcome::result<Model> LoadModel(const char* filename);
+
 // RGBA, 8 bits per channel.
 // In the example (backpack/diffuse.png) it's actually
 // DXGI_FORMAT_R8G8B8A8_UNORM_SRGB.
@@ -64,10 +68,10 @@ struct Mesh
 
 struct Model
 {
-    std::uint32_t meshes_count_;
-    std::uint32_t textures_count_;
-    std::uint32_t memory_size_;
-    const std::uint8_t* memory_;
+    std::uint32_t meshes_count_ = 0;
+    std::uint32_t textures_count_ = 0;
+    std::uint32_t memory_size_ = 0;
+    const std::uint8_t* memory_ = nullptr;
     Vector3f aabb_min_{};
     Vector3f aabb_max_{};
 
@@ -78,11 +82,9 @@ struct Model
     ~Model();
     Model(const Model& rhs) = delete;
     Model& operator=(const Model& rhs) = delete;
-    Model& operator=(Model&& rhs) = delete;
+    Model& operator=(Model&& rhs) noexcept;
     Model(Model&& rhs) noexcept;
 };
-
-Model LoadModel(const char* filename);
 
 enum struct Capabilities : std::uint16_t
 {
