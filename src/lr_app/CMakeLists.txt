@@ -93,8 +93,6 @@ set(header_files
     render_lines.h
     shaders_database.h
     shaders_compiler.h
-    read_directory_changes.h
-    io_completion_port.h
     render_vertices_only.h
     render_with_normals.h
     predefined_objects.h
@@ -126,4 +124,6 @@ target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 # Third-party.
 target_link_libraries(${exe_name} DX11_Integrated)
 target_link_libraries(${exe_name} ImGui_Integrated)
+target_link_libraries(${exe_name} win_io)
+
 

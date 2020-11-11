@@ -9,7 +9,8 @@
 #include "dx_api.h"
 
 #include "utils.h"
-#include "read_directory_changes.h"
+
+#include <read_directory_changes.h>
 
 struct ShaderInfo
 {

@@ -102,6 +102,11 @@ ComPtr<ID3DBlob> ShadersCompiler::compile(const ShaderInfo& shader_info
     , dirs_()
     , io_port_()
 {
+    std::error_code ec;
+    auto port = wi::IoCompletionPort::make(1, ec);
+    Panic(!!port);
+    Panic(!ec);
+    io_port_ = std::move(*port);
 }
 
 void ShadersWatch::watch_changes_to(const ShaderInfo& shader)
@@ -188,14 +193,19 @@ void ShadersWatch::add_watch(const ShaderInfo& shader, const wchar_t* file)
     std::unique_ptr<Directory> ptr(new Directory());
     ptr->directory_path = std::move(directory_path);
     void* mem = static_cast<void*>(&ptr->watcher_data);
-    (void)new(mem) wi::DirectoryChanges(
+    std::error_code ec;
+    auto dir_changes = wi::DirectoryChanges::make(
         ptr->directory_path.c_str()
         , ptr->buffer
         , sizeof(ptr->buffer)
         , false // do NOT watch subtree
         , FILE_NOTIFY_CHANGE_LAST_WRITE
         , io_port
-        , key);
+        , key
+        , ec);
+    Panic(!ec);
+    Panic(!!dir_changes);
+    (void)new(mem) wi::DirectoryChanges(std::move(*dir_changes));
     return ptr;
 }
 
