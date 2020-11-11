@@ -3,8 +3,8 @@
 #include "imgui.h"
 
 #include <glm/vec3.hpp>
-
-#include <DirectXMath.h>
+#include <glm/mat4x4.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 enum class LightMode : int
 {
@@ -51,15 +51,15 @@ struct ImGuiState
         }
         return false;
     }
-    DirectX::XMMATRIX get_model_scale() const
+    glm::mat4x4 get_model_scale() const
     {
-        return DirectX::XMMatrixScaling(model_scale, model_scale, model_scale);
+        return glm::scale(glm::mat4x4(1.f), glm::vec3(model_scale));
     }
-    DirectX::XMMATRIX get_model_rotation() const
+    glm::mat4x4 get_model_rotation() const
     {
         const float pitch = DegreesToRadians(model_rotation.x);
         const float yaw = DegreesToRadians(model_rotation.y);
         const float roll = DegreesToRadians(model_rotation.z);
-        return DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
+        return glm::eulerAngleXYZ(pitch, yaw, roll);
     }
 };

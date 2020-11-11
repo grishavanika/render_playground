@@ -1,8 +1,6 @@
 #include "render_model.h"
 #include "shaders_compiler.h"
 
-#include <DirectXMath.h>
-
 static constexpr DXGI_FORMAT GetIndexBufferFormat()
 {
     if constexpr ((sizeof(Index) == 2) && std::is_unsigned_v<Index>)
@@ -150,8 +148,8 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
 }
 
 void RenderModel::render(ID3D11DeviceContext& device_context
-    , const DirectX::XMMATRIX& view
-    , const DirectX::XMMATRIX& projection) const
+    , const glm::mat4x4& view
+    , const glm::mat4x4& projection) const
 {
     // Parameters for VS.
     VSConstantBuffer0 vs_cb0;

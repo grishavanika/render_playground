@@ -2,13 +2,13 @@
 #include "shaders_compiler.h"
 #include "utils.h"
 
-#include <DirectXMath.h>
+#include <glm/mat4x4.hpp>
 
 struct VerticesVSConstantBuffer
 {
-    DirectX::XMMATRIX world;
-    DirectX::XMMATRIX view;
-    DirectX::XMMATRIX projection;
+    glm::mat4x4 world;
+    glm::mat4x4 view;
+    glm::mat4x4 projection;
 };
 
 /*static*/ RenderVertices RenderVertices::make(const ComPtr<ID3D11Device>& device
@@ -17,7 +17,7 @@ struct VerticesVSConstantBuffer
     RenderVertices render{};
     render.device_ = device;
     render.vertices_.assign(vertices.begin(), vertices.end());
-    render.world = DirectX::XMMatrixIdentity();
+    render.world = glm::mat4x4(1.f);
     D3D11_BUFFER_DESC desc{};
     // Create vertex buffer.
     desc.ByteWidth = UINT(render.vertices_.size() * sizeof(glm::vec3));
@@ -40,8 +40,8 @@ struct VerticesVSConstantBuffer
 }
 
 void RenderVertices::render(ID3D11DeviceContext& device_context
-    , const DirectX::XMMATRIX& view
-    , const DirectX::XMMATRIX& projection) const
+    , const glm::mat4x4& view
+    , const glm::mat4x4& projection) const
 {
     if (vertices_.empty())
     {

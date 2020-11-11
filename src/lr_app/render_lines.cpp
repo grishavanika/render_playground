@@ -2,18 +2,20 @@
 #include "shaders_compiler.h"
 #include "utils.h"
 
+#include <glm/mat4x4.hpp>
+
 struct LineVSConstantBuffer
 {
-    DirectX::XMMATRIX world;
-    DirectX::XMMATRIX view;
-    DirectX::XMMATRIX projection;
+    glm::mat4x4 world;
+    glm::mat4x4 view;
+    glm::mat4x4 projection;
 };
 
 /*static*/ RenderLines RenderLines::make(const ComPtr<ID3D11Device>& device)
 {
     RenderLines render{};
     render.device_ = device;
-    render.world = DirectX::XMMatrixIdentity();
+    render.world = glm::mat4x4(1.0f);
 
     D3D11_BUFFER_DESC desc{};
 #if (0) // Will be created on resize.
@@ -123,8 +125,8 @@ void RenderLines::add_lines(const std::span<const glm::vec3>& points
 }
 
 void RenderLines::render(ID3D11DeviceContext& device_context
-    , const DirectX::XMMATRIX& view
-    , const DirectX::XMMATRIX& projection) const
+    , const glm::mat4x4& view
+    , const glm::mat4x4& projection) const
 {
     if (vertices_.empty())
     {

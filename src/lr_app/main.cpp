@@ -19,7 +19,9 @@
 #include <ScopeGuard.h>
 
 #include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 #include <glm/geometric.hpp>
+#include <glm/ext.hpp>
 
 #define NOMINMAX
 #include <Windows.h>
@@ -46,7 +48,8 @@ struct GameState
     ImGuiState imgui_;
 
     float fov_y_ = DegreesToRadians(45.f);
-    float aspect_ratio_ = 0.f;
+    float window_width_ = 0.f;
+    float window_height_ = 0.f;
     float mouse_scroll_sensitivity_ = 0.05f;
     float camera_yaw_degrees_ = 90.f;  // [-180; 180]
     float camera_pitch_degrees_ = 0.f; // [-90; 90]
@@ -81,7 +84,8 @@ static void OnWindowResize(GameState& game, float width, float height)
     Panic(game.render_target_view_);
     Panic(game.depth_buffer_);
 
-    game.aspect_ratio_ = (width / height);
+    game.window_width_ = width;
+    game.window_height_ = height;
     game.device_context_->OMSetRenderTargets(0, 0, 0);
     game.render_target_view_.Reset();
     // Preserve the existing buffer count and format.
@@ -527,11 +531,6 @@ static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
     Panic(o.ps_shader_);
 }
 
-static DirectX::XMVECTOR GLM_TO_DX(const glm::vec3& v)
-{
-    return DirectX::XMVectorSet(v.x, v.y, v.z, 1.f);
-}
-
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
     GameState game;
@@ -557,7 +556,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     Panic(!!::GetClientRect(window.wnd(), &client_rect));
     const UINT client_width = (client_rect.right - client_rect.left);
     const UINT client_height = (client_rect.bottom - client_rect.top);
-    game.aspect_ratio_ = (float(client_width) / float(client_height));
+    game.window_width_ = float(client_width);
+    game.window_height_ = float(client_height);
     
     { // Calculate default camera orientation from initial angles.
         const float yaw = DegreesToRadians(game.camera_yaw_degrees_);
@@ -697,8 +697,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         , glm::vec3(0.f, 0.f, 1.f));
 
     // Initialize the view matrix.
-    DirectX::XMMATRIX projection = DirectX::XMMatrixIdentity();
-    DirectX::XMMATRIX view = DirectX::XMMatrixIdentity();
+    glm::mat4x4 projection = glm::mat4x4(1.f);
+    glm::mat4x4 view = glm::mat4x4(1.f);
 
     const DWORD start_time = ::GetTickCount();
 
@@ -759,19 +759,18 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         TickImGui(game, render_model, known_shaders);
         TickInput(game);
 
-        projection = DirectX::XMMatrixPerspectiveFovLH(
-              game.fov_y_
-            , game.aspect_ratio_
+        projection = glm::perspectiveFovLH(game.fov_y_
+            , game.window_width_
+            , game.window_height_
             , 0.01f    // NearZ
             , 10000.0f); // FarZ
         const float t = float(::GetTickCount() - start_time) / 1000.f;
 
-        view = DirectX::XMMatrixLookAtLH(
-              GLM_TO_DX(game.camera_position_)
-            , GLM_TO_DX(game.camera_position_ + game.camera_front_dir_)
-            , GLM_TO_DX(game.camera_up_dir_));
+        view = glm::lookAtLH(game.camera_position_
+            , game.camera_position_ + game.camera_front_dir_
+            , game.camera_up_dir_);
 
-        render_model.world = DirectX::XMMatrixIdentity()
+        render_model.world = glm::mat4x4(1.f)
             * game.imgui_.get_model_scale()
             * game.imgui_.get_model_rotation();
         render_bb.world = render_model.world;
@@ -818,8 +817,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         if (game.imgui_.show_light_cube)
         {
-            render_light_cube.world = DirectX::XMMatrixTranslationFromVector(
-                GLM_TO_DX(render_model.light_position));
+            render_light_cube.world = glm::translate(glm::mat4x4(1.f), render_model.light_position);
             render_light_cube.render(*game.device_context_.Get(), view, projection);
         }
         if (game.imgui_.show_zero_world_space)

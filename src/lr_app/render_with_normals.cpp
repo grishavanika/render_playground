@@ -2,13 +2,11 @@
 #include "shaders_compiler.h"
 #include "utils.h"
 
-#include <DirectXMath.h>
-
 struct NormalsVSConstantBuffer
 {
-    DirectX::XMMATRIX world;
-    DirectX::XMMATRIX view;
-    DirectX::XMMATRIX projection;
+    glm::mat4x4 world;
+    glm::mat4x4 view;
+    glm::mat4x4 projection;
 };
 
 /*static*/ RenderWithNormals RenderWithNormals::make(const ComPtr<ID3D11Device>& device
@@ -17,7 +15,7 @@ struct NormalsVSConstantBuffer
     RenderWithNormals render{};
     render.device_ = device;
     render.vertices_.assign(vertices.begin(), vertices.end());
-    render.world = DirectX::XMMatrixIdentity();
+    render.world = glm::mat4x4(1.f);
     D3D11_BUFFER_DESC desc{};
     // Create vertex buffer.
     desc.ByteWidth = UINT(render.vertices_.size() * sizeof(render.vertices_[0]));
@@ -40,8 +38,8 @@ struct NormalsVSConstantBuffer
 }
 
 void RenderWithNormals::render(ID3D11DeviceContext& device_context
-    , const DirectX::XMMATRIX& view
-    , const DirectX::XMMATRIX& projection) const
+    , const glm::mat4x4& view
+    , const glm::mat4x4& projection) const
 {
     if (vertices_.empty())
     {

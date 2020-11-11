@@ -6,6 +6,7 @@
 
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 
 #include <vector>
 
@@ -36,9 +37,9 @@ struct RenderModel
     // vs_basic_phong_lighting.hlsl
     struct VSConstantBuffer0
     {
-        DirectX::XMMATRIX world;
-        DirectX::XMMATRIX view;
-        DirectX::XMMATRIX projection;
+        glm::mat4x4 world;
+        glm::mat4x4 view;
+        glm::mat4x4 projection;
     };
 
     // ps_basic_phong_lighting.hlsl
@@ -61,7 +62,7 @@ struct RenderModel
     ComPtr<ID3D11SamplerState> sampler_linear_;
 
     // Tweak whole model position & orientation.
-    DirectX::XMMATRIX world;
+    glm::mat4x4 world;
 
     // Tweak light.
     glm::vec3 light_color;
@@ -71,7 +72,7 @@ struct RenderModel
     static RenderModel make(ID3D11Device& device, const Model& model);
 
     void render(ID3D11DeviceContext& device_context
-        , const DirectX::XMMATRIX& view
-        , const DirectX::XMMATRIX& projection) const;
+        , const glm::mat4x4& view
+        , const glm::mat4x4& projection) const;
 };
 #pragma warning(pop)
