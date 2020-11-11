@@ -12,7 +12,7 @@ struct VerticesVSConstantBuffer
 };
 
 /*static*/ RenderVertices RenderVertices::make(const ComPtr<ID3D11Device>& device
-    , const std::span<const Vector3f>& vertices)
+    , const std::span<const glm::vec3>& vertices)
 {
     RenderVertices render{};
     render.device_ = device;
@@ -20,7 +20,7 @@ struct VerticesVSConstantBuffer
     render.world = DirectX::XMMatrixIdentity();
     D3D11_BUFFER_DESC desc{};
     // Create vertex buffer.
-    desc.ByteWidth = UINT(render.vertices_.size() * sizeof(Vector3f));
+    desc.ByteWidth = UINT(render.vertices_.size() * sizeof(glm::vec3));
     desc.Usage = D3D11_USAGE_IMMUTABLE;
     desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     desc.CPUAccessFlags = 0;
@@ -51,7 +51,7 @@ void RenderVertices::render(ID3D11DeviceContext& device_context
     PanicShadersValid(vs_shader_, ps_shader_);
 
     // Input Assembler.
-    UINT stride = sizeof(Vector3f);
+    UINT stride = sizeof(glm::vec3);
     UINT offset = 0;
     device_context.IASetVertexBuffers(0, 1, vertex_buffer_.GetAddressOf(), &stride, &offset);
     device_context.IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

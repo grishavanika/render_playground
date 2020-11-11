@@ -1,12 +1,13 @@
 #pragma once
 #include "dx_api.h"
-
-#include <vector>
-#include <span>
-
 #include "utils.h"
 #include "shaders_compiler.h"
 #include "vertex.h"
+
+#include <glm/vec3.hpp>
+
+#include <vector>
+#include <span>
 
 // Mostly from:
 // https://github.com/GPUOpen-LibrariesAndSDKs/GPUParticles11/blob/master/amd_sdk/src/LineRender.h
@@ -38,7 +39,7 @@ struct RenderLines
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
     void add_bb(const DirectX::BoundingBox& box
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
-    void add_bb(const Vector3f& min, const Vector3f& max
+    void add_bb(const glm::vec3& min, const glm::vec3& max
         , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
 
     void clear();

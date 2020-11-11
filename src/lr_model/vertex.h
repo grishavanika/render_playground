@@ -1,26 +1,15 @@
 #pragma once
+#include <glm/vec3.hpp>
+#include <glm/vec2.hpp>
 
 static_assert(sizeof(float) == 4);
 
-struct Vector3f
-{
-    float x;
-    float y;
-    float z;
-};
-
-struct Vector2f
-{
-    float x;
-    float y;
-};
-
 struct Vertex
 {
-    Vector3f position;
-    Vector3f normal; // optional
-    Vector3f tangent; // optional
-    Vector2f texture_coord; // diffuse, optional
+    glm::vec3 position;
+    glm::vec3 normal; // optional
+    glm::vec3 tangent; // optional
+    glm::vec2 texture_coord; // diffuse, optional
 };
 
 using Index = unsigned int;

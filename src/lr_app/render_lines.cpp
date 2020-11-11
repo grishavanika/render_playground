@@ -67,7 +67,7 @@ void RenderLines::add_bb(const DirectX::BoundingBox& box
     add_lines(points, color);
 }
 
-void RenderLines::add_bb(const Vector3f& min, const Vector3f& max
+void RenderLines::add_bb(const glm::vec3& min, const glm::vec3& max
     , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
 {
     DirectX::XMFLOAT3 corners[8];

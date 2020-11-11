@@ -1,19 +1,20 @@
 #pragma once
 #include "dx_api.h"
-
-#include <vector>
-#include <span>
-
 #include "utils.h"
 #include "vertex.h"
 #include "shaders_compiler.h"
+
+#include <glm/vec3.hpp>
+
+#include <vector>
+#include <span>
 
 struct RenderWithNormals
 {
     struct NormalsVertex
     {
-        Vector3f position;
-        Vector3f normal;
+        glm::vec3 position;
+        glm::vec3 normal;
     };
 
     std::vector<NormalsVertex> vertices_;

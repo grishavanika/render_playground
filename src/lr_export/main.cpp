@@ -1,9 +1,13 @@
+#include "model.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+
+#include <glm/vec3.hpp>
 
 #include <vector>
 #include <filesystem>
@@ -13,8 +17,6 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
-
-#include "model.h"
 
 namespace fs = std::filesystem;
 
@@ -40,8 +42,8 @@ struct AssimpMesh
     AssimpTexture texture_normal;
     bool has_normals = false;
     bool has_texture_coords = false;
-    Vector3f aabb_min;
-    Vector3f aabb_max;
+    glm::vec3 aabb_min;
+    glm::vec3 aabb_max;
 };
 
 struct AssimpModel
@@ -55,8 +57,8 @@ struct AssimpModel
     };
     std::vector<AssimpMesh> meshes;
     std::vector<Blob> materials;
-    Vector3f aabb_min;
-    Vector3f aabb_max;
+    glm::vec3 aabb_min;
+    glm::vec3 aabb_max;
 };
 
 // Model's loading with Assimp comes from learnopengl.com:
@@ -188,16 +190,6 @@ static void Assimp_ProcessNode(const aiScene& scene, const aiNode& node, F on_ne
     }
 }
 
-static Vector3f MaxVector3f()
-{
-    return {FLT_MAX, FLT_MAX, FLT_MAX};
-}
-
-static Vector3f MinVector3f()
-{
-    return {FLT_MIN, FLT_MIN, FLT_MIN};
-}
-
 static void UpdateAABB(AssimpModel& model, const AssimpMesh& mesh)
 {
     if (mesh.aabb_min.x < model.aabb_min.x) model.aabb_min.x = mesh.aabb_min.x;
@@ -224,8 +216,8 @@ static AssimpModel Assimp_Load(fs::path file_path)
 
     const fs::path dir = file_path.parent_path();
     AssimpModel model;
-    model.aabb_min = MaxVector3f();
-    model.aabb_max = MinVector3f();
+    model.aabb_min = glm::vec3(FLT_MAX);
+    model.aabb_max = glm::vec3(FLT_MIN);
 
     Assimp_ProcessNode(*scene, *scene->mRootNode
         , [&](AssimpMesh&& mesh)

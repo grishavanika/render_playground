@@ -2,43 +2,9 @@
 #include "vertex.h"
 #include "utils_outcome.h"
 
-#if (__has_include(<span>))
-#  include <span>
-#else
-// Narrow case only to MinGW to control explicitly where this hack exists
-#if (defined(__MINGW32__) || defined(__MINGW64__))
-#include <cstddef>
-// Introducing std:: intentionally. This should be cut anyway once MinGW gains <span>
-namespace std
-{
-    template<typename T>
-    class span
-    {
-    public:
-        constexpr span() noexcept
-            : span(nullptr, 0)
-        {
-        }
+#include <glm/vec3.hpp>
 
-        constexpr span(T* ptr, std::size_t count) noexcept
-            : ptr_(ptr)
-            , count_(count)
-        {
-        }
-
-        constexpr T& operator[](std::size_t i) const noexcept
-        {
-            return ptr_[i];
-        }
-
-    private:
-        T* ptr_;
-        std::size_t count_;
-    };
-}
-#endif
-#endif
-
+#include <span>
 #include <type_traits>
 
 #include <cstdint>
@@ -72,8 +38,8 @@ struct Model
     std::uint32_t textures_count_ = 0;
     std::uint32_t memory_size_ = 0;
     const std::uint8_t* memory_ = nullptr;
-    Vector3f aabb_min_{};
-    Vector3f aabb_max_{};
+    glm::vec3 aabb_min_{};
+    glm::vec3 aabb_max_{};
 
     Mesh get_mesh(std::uint32_t index) const;
     Texture get_texture(std::uint32_t index) const;
@@ -104,8 +70,8 @@ struct Header
     std::uint32_t meshes_count;
     std::uint32_t textures_count;
 
-    Vector3f aabb_min;
-    Vector3f aabb_max;
+    glm::vec3 aabb_min;
+    glm::vec3 aabb_max;
 };
 static_assert(sizeof(Header) == 36);
 static_assert(std::is_trivial<Header>());
