@@ -40,8 +40,8 @@ struct NormalsVSConstantBuffer
 }
 
 void RenderWithNormals::render(ID3D11DeviceContext& device_context
-    , const DirectX::XMMATRIX& view_transposed
-    , const DirectX::XMMATRIX& projection_transposed) const
+    , const DirectX::XMMATRIX& view
+    , const DirectX::XMMATRIX& projection) const
 {
     if (vertices_.empty())
     {
@@ -60,8 +60,8 @@ void RenderWithNormals::render(ID3D11DeviceContext& device_context
     // Vertex Shader.
     NormalsVSConstantBuffer vs_constants;
     vs_constants.world = world;
-    vs_constants.projection = projection_transposed;
-    vs_constants.view = view_transposed;
+    vs_constants.projection = projection;
+    vs_constants.view = view;
     device_context.VSSetShader(vs_shader_->vs.Get(), 0, 0);
     device_context.UpdateSubresource(constant_buffer_.Get(), 0, nullptr, &vs_constants, 0, 0);
     device_context.VSSetConstantBuffers(0, 1, constant_buffer_.GetAddressOf());

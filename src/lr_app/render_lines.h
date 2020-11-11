@@ -16,8 +16,8 @@ struct RenderLines
 {
     struct LineVertex
     {
-        DirectX::XMFLOAT3 position;
-        DirectX::XMFLOAT3 color;
+        glm::vec3 position;
+        glm::vec3 color;
     };
 
     std::vector<LineVertex> vertices_;
@@ -32,19 +32,16 @@ struct RenderLines
 
     static RenderLines make(const ComPtr<ID3D11Device>& device);
 
-    void add_line(const DirectX::XMFLOAT3& p0
-        , const DirectX::XMFLOAT3& p1
-        , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
-    void add_lines(const std::span<const DirectX::XMFLOAT3>& points
-        , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
-    void add_bb(const DirectX::BoundingBox& box
-        , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
+    void add_line(const glm::vec3& p0, const glm::vec3& p1
+        , const glm::vec3& color = glm::vec3(1.f));
+    void add_lines(const std::span<const glm::vec3>& points
+        , const glm::vec3& color = glm::vec3(1.f));
     void add_bb(const glm::vec3& min, const glm::vec3& max
-        , const DirectX::XMFLOAT3& color = DirectX::XMFLOAT3(1.f, 1.f, 1.f));
+        , const glm::vec3& color = glm::vec3(1.f));
 
     void clear();
 
     void render(ID3D11DeviceContext& device_context
-        , const DirectX::XMMATRIX& view_transposed
-        , const DirectX::XMMATRIX& projection_transposed) const;
+        , const DirectX::XMMATRIX& view
+        , const DirectX::XMMATRIX& projection) const;
 };

@@ -1,7 +1,8 @@
 #pragma once
 #include "utils.h"
-
 #include "imgui.h"
+
+#include <glm/vec3.hpp>
 
 #include <DirectXMath.h>
 
@@ -19,7 +20,7 @@ struct ImGuiState
 
     // Lighting.
     float light_power = 5.f;
-    ImVec4 light_color = ImVec4(1.f, 1.f, 1.f, 1.f);
+    glm::vec3 light_color = glm::vec3(1.f);
 
     // Model.
     float model_scale = 1.f;
@@ -49,14 +50,6 @@ struct ImGuiState
             return true;
         }
         return false;
-    }
-    DirectX::XMVECTOR get_light_color() const
-    {
-        return DirectX::XMVectorSet(
-              light_power * light_color.x
-            , light_power * light_color.y
-            , light_power * light_color.z
-            , 1.f);
     }
     DirectX::XMMATRIX get_model_scale() const
     {

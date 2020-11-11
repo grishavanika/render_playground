@@ -150,26 +150,27 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
 }
 
 void RenderModel::render(ID3D11DeviceContext& device_context
-    , const DirectX::XMMATRIX& view_transposed
-    , const DirectX::XMMATRIX& projection_transposed) const
+    , const DirectX::XMMATRIX& view
+    , const DirectX::XMMATRIX& projection) const
 {
     // Parameters for VS.
     VSConstantBuffer0 vs_cb0;
     vs_cb0.world = world;
-    vs_cb0.view = view_transposed;
-    vs_cb0.projection = projection_transposed;
+    vs_cb0.view = view;
+    vs_cb0.projection = projection;
 
-    // Parameters for PS.
-    PSConstantBuffer0 ps_cb0;
-    ps_cb0.light_color = light_color;
-    ps_cb0.viewer_position = viewer_position;
-    ps_cb0.light_position = light_position;
+    // Put a flag that there is actually no needed textures
+    // (decide by looking at fist mesh; they all the same).
     const bool has_texture = (meshes.size() > 0)
         && GetTexture(*this, meshes[0].ps_texture_diffuse)
         && GetTexture(*this, meshes[0].ps_texture_normal);
-    ps_cb0.has_texture = has_texture
-        ? DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.0f)
-        : DirectX::XMVectorSet(0.f, 0.f, 0.f, 0.0f);
+
+    // Parameters for PS.
+    PSConstantBuffer0 ps_cb0;
+    ps_cb0.light_color = glm::vec4(light_color, 1.f);
+    ps_cb0.viewer_position = glm::vec4(viewer_position, 1.f);
+    ps_cb0.light_position = glm::vec4(light_position, 1.f);
+    ps_cb0.has_texture = has_texture ? glm::vec4(1.f) : glm::vec4(0.f);
 
     PanicShadersValid(vs_shader_, ps_shader_);
 

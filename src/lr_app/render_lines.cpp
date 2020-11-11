@@ -37,40 +37,17 @@ struct LineVSConstantBuffer
     return render;
 }
 
-void RenderLines::add_line(const DirectX::XMFLOAT3& p0
-    , const DirectX::XMFLOAT3& p1
-    , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
+void RenderLines::add_line(const glm::vec3& p0, const glm::vec3& p1
+    , const glm::vec3& color /*= glm::vec3(1.f)*/)
 {
-    const DirectX::XMFLOAT3 points[2] = {p0, p1};
-    add_lines(points, color);
-}
-
-void RenderLines::add_bb(const DirectX::BoundingBox& box
-    , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
-{
-    DirectX::XMFLOAT3 corners[8];
-    box.GetCorners(corners);
-
-    const int indices[24] =
-    {
-        0, 1, 1, 2, 2, 3, 3, 0,
-        3, 7, 7, 6, 6, 2, 7, 4,
-        4, 0, 4, 5, 5, 1, 5, 6
-    };
-
-    DirectX::XMFLOAT3 points[std::size(indices)];
-    for (std::size_t i = 0; i < std::size(indices); ++i)
-    {
-        points[i] = corners[indices[i]];
-    }
-
+    const glm::vec3 points[2] = {p0, p1};
     add_lines(points, color);
 }
 
 void RenderLines::add_bb(const glm::vec3& min, const glm::vec3& max
-    , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
+    , const glm::vec3& color /*= glm::vec3(1.f)*/)
 {
-    DirectX::XMFLOAT3 corners[8];
+    glm::vec3 corners[8];
     corners[0].x = min.x;
     corners[0].y = min.y;
     corners[0].z = min.z;
@@ -103,7 +80,7 @@ void RenderLines::add_bb(const glm::vec3& min, const glm::vec3& max
         7, 6, 6, 5, 6, 2, 7, 1
     };
 
-    DirectX::XMFLOAT3 points[std::size(indices)];
+    glm::vec3 points[std::size(indices)];
     for (std::size_t i = 0; i < std::size(indices); ++i)
     {
         points[i] = corners[indices[i]];
@@ -117,19 +94,17 @@ void RenderLines::clear()
     vertices_.clear();
 }
 
-void RenderLines::add_lines(const std::span<const DirectX::XMFLOAT3>& points
-    , const DirectX::XMFLOAT3& color /*= DirectX::XMFLOAT3(1.f, 1.f, 1.f)*/)
+void RenderLines::add_lines(const std::span<const glm::vec3>& points
+    , const glm::vec3& color /*= glm::vec3(1.f)*/)
 {
     Panic(!points.empty());
     Panic((points.size() % 2) == 0);
 
     const std::size_t old_capacity = vertices_.capacity();
     vertices_.reserve(vertices_.size() + points.size());
-    for (const DirectX::XMFLOAT3& p : points)
+    for (const glm::vec3& p : points)
     {
-        LineVertex& v = vertices_.emplace_back(LineVertex{});
-        v.position = p;
-        v.color = color;
+        vertices_.emplace_back(LineVertex{p, color});
     }
 
     if (vertices_.capacity() > old_capacity)
@@ -148,8 +123,8 @@ void RenderLines::add_lines(const std::span<const DirectX::XMFLOAT3>& points
 }
 
 void RenderLines::render(ID3D11DeviceContext& device_context
-    , const DirectX::XMMATRIX& view_transposed
-    , const DirectX::XMMATRIX& projection_transposed) const
+    , const DirectX::XMMATRIX& view
+    , const DirectX::XMMATRIX& projection) const
 {
     if (vertices_.empty())
     {
@@ -175,8 +150,8 @@ void RenderLines::render(ID3D11DeviceContext& device_context
     // Vertex Shader.
     LineVSConstantBuffer vs_constants;
     vs_constants.world = world;
-    vs_constants.projection = projection_transposed;
-    vs_constants.view = view_transposed;
+    vs_constants.projection = projection;
+    vs_constants.view = view;
     device_context.VSSetShader(vs_shader_->vs.Get(), 0, 0);
     device_context.UpdateSubresource(constant_buffer_.Get(), 0, nullptr, &vs_constants, 0, 0);
     device_context.VSSetConstantBuffers(0, 1, constant_buffer_.GetAddressOf());

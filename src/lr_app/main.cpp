@@ -1,36 +1,35 @@
-#define NOMINMAX
-#include <Windows.h>
-#include <windowsx.h>
-#include <tchar.h>
-
 #include "dx_api.h"
-
 #include "stub_window.h"
 #include "utils.h"
 #include "imgui_debug.h"
-
 #include "render_lines.h"
 #include "render_model.h"
 #include "render_vertices_only.h"
 #include "render_with_normals.h"
-
 #include "shaders_compiler.h"
 #include "shaders_database.h"
-
 #include "predefined_objects.h"
-
-#include <cstdlib>
-
-#include <vector>
-#include <unordered_set>
-
-#include <ScopeGuard.h>
 
 // Integration of ImGui comes from
 // imgui-src/examples/example_win32_directx11/main.cpp
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
+
+#include <ScopeGuard.h>
+
+#include <glm/vec3.hpp>
+#include <glm/geometric.hpp>
+
+#define NOMINMAX
+#include <Windows.h>
+#include <windowsx.h>
+#include <tchar.h>
+
+#include <vector>
+#include <unordered_set>
+
+#include <cstdlib>
 
 #if !defined(XX_PACKAGE_FOLDER)
 #  error "Build system missed to specify where package (binaries/data) is."
@@ -56,10 +55,10 @@ struct GameState
 
     std::unordered_set<WPARAM> keys_down_;
 
-    DirectX::XMVECTOR camera_position_  = DirectX::XMVectorSet(0.0f, 0.0f, -15.0f, 0.0f);
-    DirectX::XMVECTOR camera_up_dir_    = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    DirectX::XMVECTOR camera_front_dir_ = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-    DirectX::XMVECTOR camera_right_dir_ = DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+    glm::vec3 camera_position_  = glm::vec3(0.0f, 0.0f, -15.0f);
+    glm::vec3 camera_up_dir_    = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 camera_front_dir_ = glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::vec3 camera_right_dir_ = glm::vec3(1.0f, 0.0f, 0.0f);
 
     D3D11_VIEWPORT vp_{};
     ComPtr<ID3D11Device> device_;
@@ -157,10 +156,8 @@ static void OnWindowMouseInput(GameState& game, HRAWINPUT handle)
     const float y = sinf(pitch);
     const float z = sinf(yaw) * cosf(DegreesToRadians(game.camera_pitch_degrees_));
 
-    game.camera_front_dir_ = DirectX::XMVector3Normalize(
-        DirectX::XMVectorSet(x, y, z, 0.f));
-    game.camera_right_dir_ = DirectX::XMVector3Normalize(
-        DirectX::XMVector3Cross(game.camera_front_dir_, game.camera_up_dir_));
+    game.camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
+    game.camera_right_dir_ = glm::normalize(glm::cross(game.camera_front_dir_, game.camera_up_dir_));
 }
 
 static void AddMessageHandling(StubWindow& window, GameState& game)
@@ -304,8 +301,6 @@ static void ImGui_Setup(GameState& game, StubWindow& window)
 // https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 static void TickInput(GameState& game)
 {
-    using namespace DirectX;
-
     if (game.keys_down_.contains(0x57)) // W
     {
         game.camera_position_ += (game.camera_front_dir_ * game.camera_move_speed_);
@@ -532,6 +527,11 @@ static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
     Panic(o.ps_shader_);
 }
 
+static DirectX::XMVECTOR GLM_TO_DX(const glm::vec3& v)
+{
+    return DirectX::XMVectorSet(v.x, v.y, v.z, 1.f);
+}
+
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
     GameState game;
@@ -567,10 +567,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         const float y = sinf(pitch);
         const float z = sinf(yaw) * cosf(pitch);
 
-        game.camera_front_dir_ = DirectX::XMVector3Normalize(
-            DirectX::XMVectorSet(x, y, z, 0.f));
-        game.camera_right_dir_ = DirectX::XMVector3Normalize(
-            DirectX::XMVector3Cross(game.camera_front_dir_, game.camera_up_dir_));
+        game.camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
+        game.camera_right_dir_ = glm::normalize(glm::cross(game.camera_front_dir_, game.camera_up_dir_));
     }
 
     // Device initialization.
@@ -680,24 +678,23 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         watch.watch_changes_to(*ps.ps_info);
     }
 
-    render_lines.add_bb(DirectX::BoundingBox(
-          DirectX::XMFLOAT3(0.f, 0.f, 0.f)
-        , DirectX::XMFLOAT3(1.f, 1.f, 1.f)));
+    render_lines.add_bb(glm::vec3(-1.f), glm::vec3(1.f)
+        , glm::vec3(1.f, 0.f, 0.f));
     // Positive World X direction. RED.
     render_lines.add_line(
-          DirectX::XMFLOAT3(0.f, 0.f, 0.f)
-        , DirectX::XMFLOAT3(1.f, 0.f, 0.f)
-        , DirectX::XMFLOAT3(1.f, 0.f, 0.f));
+          glm::vec3(0.f, 0.f, 0.f)
+        , glm::vec3(1.f, 0.f, 0.f)
+        , glm::vec3(1.f, 0.f, 0.f));
     // Positive World Y direction. GREEN.
     render_lines.add_line(
-          DirectX::XMFLOAT3(0.f, 0.f, 0.f)
-        , DirectX::XMFLOAT3(0.f, 1.f, 0.f)
-        , DirectX::XMFLOAT3(0.f, 1.f, 0.f));
+          glm::vec3(0.f, 0.f, 0.f)
+        , glm::vec3(0.f, 1.f, 0.f)
+        , glm::vec3(0.f, 1.f, 0.f));
     // Positive World Z direction. BLUE.
     render_lines.add_line(
-          DirectX::XMFLOAT3(0.f, 0.f, 0.f)
-        , DirectX::XMFLOAT3(0.f, 0.f, 1.f)
-        , DirectX::XMFLOAT3(0.f, 0.f, 1.f));
+          glm::vec3(0.f, 0.f, 0.f)
+        , glm::vec3(0.f, 0.f, 1.f)
+        , glm::vec3(0.f, 0.f, 1.f));
 
     // Initialize the view matrix.
     DirectX::XMMATRIX projection = DirectX::XMMatrixIdentity();
@@ -726,8 +723,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
                 render_model = RenderModel::make(*game.device_.Get(), model);
                 SetShadersRef(render_model, known_shaders, c_vs_gooch_shading, c_ps_gooch_shading);
                 render_bb.clear();
-                render_bb.add_bb(model.aabb_min_, model.aabb_max_
-                    , DirectX::XMFLOAT3(1.f, 0.f, 0.f));
+                render_bb.add_bb(model.aabb_min_, model.aabb_max_, glm::vec3(1.f, 0.f, 0.f));
             }
         }
 
@@ -771,15 +767,15 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         const float t = float(::GetTickCount() - start_time) / 1000.f;
 
         view = DirectX::XMMatrixLookAtLH(
-              game.camera_position_
-            , DirectX::XMVectorAdd(game.camera_position_, game.camera_front_dir_)
-            , game.camera_up_dir_);
+              GLM_TO_DX(game.camera_position_)
+            , GLM_TO_DX(game.camera_position_ + game.camera_front_dir_)
+            , GLM_TO_DX(game.camera_up_dir_));
 
         render_model.world = DirectX::XMMatrixIdentity()
             * game.imgui_.get_model_scale()
             * game.imgui_.get_model_rotation();
         render_bb.world = render_model.world;
-        render_model.light_color = game.imgui_.get_light_color();
+        render_model.light_color = game.imgui_.light_color;
         render_model.viewer_position = game.camera_position_;
 
         switch (game.imgui_.light_mode)
@@ -788,7 +784,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         {
             const float cam_x = (sinf(t) * game.imgui_.light_move_radius);
             const float cam_z = (cosf(t) * game.imgui_.light_move_radius);
-            render_model.light_position = DirectX::XMVectorSet(cam_x, 0.0f, cam_z, 0.0f);
+            render_model.light_position = glm::vec3(cam_x, 0.0f, cam_z);
             break;
         }
         case LightMode::Moving_Paused:
@@ -823,7 +819,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         if (game.imgui_.show_light_cube)
         {
             render_light_cube.world = DirectX::XMMatrixTranslationFromVector(
-                render_model.light_position);
+                GLM_TO_DX(render_model.light_position));
             render_light_cube.render(*game.device_context_.Get(), view, projection);
         }
         if (game.imgui_.show_zero_world_space)

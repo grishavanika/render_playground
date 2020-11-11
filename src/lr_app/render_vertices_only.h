@@ -25,6 +25,6 @@ struct RenderVertices
         , const std::span<const glm::vec3>& vertices);
 
     void render(ID3D11DeviceContext& device_context
-        , const DirectX::XMMATRIX& view_transposed
-        , const DirectX::XMMATRIX& projection_transposed) const;
+        , const DirectX::XMMATRIX& view
+        , const DirectX::XMMATRIX& projection) const;
 };

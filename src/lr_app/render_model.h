@@ -1,11 +1,13 @@
 #pragma once
 #include "dx_api.h"
-
-#include <vector>
-
 #include "utils.h"
 #include "model.h"
 #include "shaders_compiler.h"
+
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+
+#include <vector>
 
 struct RenderMesh
 {
@@ -42,10 +44,10 @@ struct RenderModel
     // ps_basic_phong_lighting.hlsl
     struct PSConstantBuffer0
     {
-        DirectX::XMVECTOR light_color;
-        DirectX::XMVECTOR light_position;
-        DirectX::XMVECTOR viewer_position;
-        DirectX::XMVECTOR has_texture;
+        glm::vec4 light_color;
+        glm::vec4 light_position;
+        glm::vec4 viewer_position;
+        glm::vec4 has_texture;
     };
 
     const Model* model;
@@ -62,14 +64,14 @@ struct RenderModel
     DirectX::XMMATRIX world;
 
     // Tweak light.
-    DirectX::XMVECTOR light_color;
-    DirectX::XMVECTOR light_position;
-    DirectX::XMVECTOR viewer_position;
+    glm::vec3 light_color;
+    glm::vec3 light_position;
+    glm::vec3 viewer_position;
 
     static RenderModel make(ID3D11Device& device, const Model& model);
 
     void render(ID3D11DeviceContext& device_context
-        , const DirectX::XMMATRIX& view_transposed
-        , const DirectX::XMMATRIX& projection_transposed) const;
+        , const DirectX::XMMATRIX& view
+        , const DirectX::XMMATRIX& projection) const;
 };
 #pragma warning(pop)
