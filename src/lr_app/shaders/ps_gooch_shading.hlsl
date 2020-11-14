@@ -1,9 +1,4 @@
-struct VS_OUTPUT
-{
-    float4 Position : SV_POSITION;
-    float3 Normal : NORMAL;
-    float3 WorldPos : POSITION;
-};
+#include "common_gooch_shading.hlsl"
 
 cbuffer PSConstantBuffer0 : register(b0)
 {
@@ -24,7 +19,7 @@ float4 main_ps(VS_OUTPUT input) : SV_Target
     float3 light_dir = normalize((float3)LightPosition - input.WorldPos);
     float3 view_dir  = normalize((float3)ViewerPosition - input.WorldPos);
     float3 l = -1 * light_dir;
-    float3 n = input.Normal;
+    float3 n = normalize(input.Normal);
     float3 v = view_dir;
 
     float t = (dot(n, l) + 1) / 2;

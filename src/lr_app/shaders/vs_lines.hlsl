@@ -1,4 +1,4 @@
-#include "common_ps_lines.hlsl"
+#include "common_lines.hlsl"
 
 cbuffer VSConstantBuffer : register(b0)
 {

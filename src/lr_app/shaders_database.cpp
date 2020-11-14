@@ -79,6 +79,13 @@ extern const ShaderInfo c_vs_basic_phong
     .defines           = {}
 };
 
+static const ShaderInfo::Dependency c_gooch_shading_deps[] =
+{
+    {
+        .file_name = L"" XX_SHADERS_FOLDER "common_gooch_shading.hlsl"
+    }
+};
+
 static const D3D11_INPUT_ELEMENT_DESC c_layout_gooch_shading[] =
 {
     {
@@ -110,7 +117,7 @@ extern const ShaderInfo c_vs_gooch_shading
     .vs_layout         = {c_layout_gooch_shading},
     .entry_point_name  = "main_vs",
     .profile           = "vs_5_0",
-    .dependencies      = {c_basic_phong_deps},
+    .dependencies      = {c_gooch_shading_deps},
     .defines           = {}
 };
 
@@ -136,14 +143,14 @@ extern const ShaderInfo c_ps_gooch_shading
     .vs_layout          = {},
     .entry_point_name   = "main_ps",
     .profile            = "ps_5_0",
-    .dependencies       = {c_basic_phong_deps},
+    .dependencies       = {c_gooch_shading_deps},
     .defines            = {}
 };
 
 static const ShaderInfo::Dependency c_lines_deps[] =
 {
     {
-        .file_name = L"" XX_SHADERS_FOLDER "common_ps_lines.hlsl"
+        .file_name = L"" XX_SHADERS_FOLDER "common_lines.hlsl"
     }
 };
 
