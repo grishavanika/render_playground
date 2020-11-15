@@ -7,8 +7,18 @@
 class StubWindow
 {
 public:
+    explicit StubWindow()
+        : class_name_(nullptr)
+        , wnd_handler_()
+        , handlers_()
+        , wnd_(nullptr)
+    {
+    }
+
     explicit StubWindow(const char* class_name)
         : class_name_(class_name)
+        , wnd_handler_()
+        , handlers_()
         , wnd_(create())
     {
     }
@@ -22,11 +32,15 @@ public:
     StubWindow& operator=(const StubWindow& rhs) = delete;
 
     StubWindow(StubWindow&& rhs) noexcept
-        : class_name_(rhs.class_name_)
-        , wnd_(rhs.wnd_)
+        : class_name_(std::exchange(rhs.class_name_, nullptr))
+        , wnd_handler_(std::move(rhs.wnd_handler_))
+        , handlers_(std::move(rhs.handlers_))
+        , wnd_(std::exchange(rhs.wnd_, nullptr))
     {
-        rhs.class_name_ = nullptr;
-        rhs.wnd_ = nullptr;
+        if (wnd_)
+        {
+            Panic(ChangeWndPtr(wnd_, this, &rhs));
+        }
     }
 
     StubWindow& operator=(StubWindow&& rhs) noexcept
@@ -38,6 +52,11 @@ public:
             wnd_ = rhs.wnd_;
             rhs.class_name_ = nullptr;
             rhs.wnd_ = nullptr;
+
+            if (wnd_)
+            {
+                Panic(ChangeWndPtr(wnd_, this, &rhs));
+            }
         }
         return *this;
     }
@@ -149,6 +168,22 @@ private:
         wnd_ = nullptr;
     }
 
+    static bool ChangeWndPtr(HWND hwnd, StubWindow* self, StubWindow* prev = nullptr)
+    {
+        // ::SetWindowLongPtr().
+        // To determine success or failure, clear the last error information by
+        // calling SetLastError with 0, then call SetWindowLongPtr.
+        // Function failure will be indicated by a return value
+        // of zero and a GetLastError result that is nonzero.
+        ::SetLastError(0);
+        if ((::SetWindowLongPtr(hwnd, GWLP_USERDATA, LONG_PTR(self)) == LONG_PTR(prev))
+            && (::GetLastError() != 0))
+        {
+            return false;
+        }
+        return true;
+    }
+
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
         if (msg == WM_NCCREATE)
@@ -156,20 +191,12 @@ private:
              const CREATESTRUCT* cs = reinterpret_cast<const CREATESTRUCT*>(lparam);
              Panic(cs && cs->lpCreateParams);
              StubWindow* self = static_cast<StubWindow*>(cs->lpCreateParams);
-
-             // ::SetWindowLongPtr().
-             // To determine success or failure, clear the last error information by
-             // calling SetLastError with 0, then call SetWindowLongPtr.
-             // Function failure will be indicated by a return value
-             // of zero and a GetLastError result that is nonzero.
-             ::SetLastError(0);
-             if ((::SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self)) == 0)
-                 && (::GetLastError() != 0))
+             if (ChangeWndPtr(hwnd, self))
              {
-                 // Can't set the data. Fail ::CreateWindow() call.
-                 return FALSE;
+                 return TRUE;
              }
-             return TRUE;
+             // Can't set the data. Fail ::CreateWindow() call.
+             return FALSE;
         }
 
         StubWindow* self = reinterpret_cast<StubWindow*>(::GetWindowLongPtr(hwnd, GWLP_USERDATA));

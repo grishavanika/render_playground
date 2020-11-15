@@ -6,6 +6,18 @@
 #include <glm/mat4x4.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
+#include <vector>
+
+struct AppState;
+struct ImGuiState;
+struct RenderModel;
+struct AllKnownShaders;
+
+void ImGui_Setup(AppState& app);
+void ImGui_TweaksInput(ImGuiState& imgui);
+void ImGui_ModelInput(ImGuiState& imgui);
+void TickImGui(AppState& app);
+
 enum class LightMode : int
 {
     Static_AtCameraPosition,
@@ -41,6 +53,9 @@ struct ImGuiState
     float light_move_radius = 10.f;
     bool show_cube_normals = false;
     bool enable_mouse = false;
+
+    AppState* app_ = nullptr;
+    int active_model_index_ = 0;
 
     bool check_wireframe_change()
     {

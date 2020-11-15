@@ -1,80 +1,48 @@
 set(exe_name lr_app)
 
-set(shaders_files
-    shaders/vs_basic_phong_lighting.hlsl
-    shaders/vs_gooch_shading.hlsl
-    shaders/ps_basic_phong_lighting.hlsl
-    shaders/ps_gooch_shading.hlsl
-    shaders/vs_lines.hlsl
-    shaders/ps_lines.hlsl
-    shaders/vs_vertices_only.hlsl
-    shaders/ps_vertices_only.hlsl
-    shaders/vs_normals.hlsl
-    shaders/ps_normals.hlsl
-# Not included to avoid compilation
-# TODO: check how to include but do not compile.
-#    shaders/common_basic_phong_lighting.hlsl
-    )
-set_source_files_properties(shaders/vs_basic_phong_lighting.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_vs
-    VS_SHADER_TYPE                Vertex
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_basic_phong_lighting.h
-    VS_SHADER_VARIABLE_NAME       k_vs_basic_phong_lighting
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/vs_gooch_shading.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_vs
-    VS_SHADER_TYPE                Vertex
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_gooch_shading.h
-    VS_SHADER_VARIABLE_NAME       k_vs_gooch_shading
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/ps_basic_phong_lighting.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_ps
-    VS_SHADER_TYPE                Pixel
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_basic_phong_lighting.h
-    VS_SHADER_VARIABLE_NAME       k_ps_basic_phong_lighting
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/ps_gooch_shading.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_ps
-    VS_SHADER_TYPE                Pixel
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_gooch_shading.h
-    VS_SHADER_VARIABLE_NAME       k_ps_gooch_shading
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/vs_lines.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_vs
-    VS_SHADER_TYPE                Vertex
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_lines.h
-    VS_SHADER_VARIABLE_NAME       k_vs_lines
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/ps_lines.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_ps
-    VS_SHADER_TYPE                Pixel
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_lines.h
-    VS_SHADER_VARIABLE_NAME       k_ps_lines
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/vs_vertices_only.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_vs
-    VS_SHADER_TYPE                Vertex
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_vertices_only.h
-    VS_SHADER_VARIABLE_NAME       k_vs_vertices_only
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/ps_vertices_only.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_ps
-    VS_SHADER_TYPE                Pixel
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_vertices_only.h
-    VS_SHADER_VARIABLE_NAME       k_ps_vertices_only
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/vs_normals.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_vs
-    VS_SHADER_TYPE                Vertex
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/vs_normals.h
-    VS_SHADER_VARIABLE_NAME       k_vs_normals
-    VS_SHADER_MODEL               5.0)
-set_source_files_properties(shaders/ps_normals.hlsl PROPERTIES
-    VS_SHADER_ENTRYPOINT          main_ps
-    VS_SHADER_TYPE                Pixel
-    VS_SHADER_OUTPUT_HEADER_FILE  shaders/ps_normals.h
-    VS_SHADER_VARIABLE_NAME       k_ps_normals
-    VS_SHADER_MODEL               5.0)
+set(shaders_files)
+
+macro(add_vs_shader file)
+    list(APPEND shaders_files shaders/${file}.hlsl)
+    set_source_files_properties(shaders/${file}.hlsl PROPERTIES
+        VS_SHADER_ENTRYPOINT          main_vs
+        VS_SHADER_TYPE                Vertex
+        VS_SHADER_OUTPUT_HEADER_FILE  shaders/${file}.h
+        VS_SHADER_VARIABLE_NAME       k_${file}
+        VS_SHADER_MODEL               5.0)
+endmacro()
+
+macro(add_ps_shader file)
+    list(APPEND shaders_files shaders/${file}.hlsl)
+    set_source_files_properties(shaders/${file}.hlsl PROPERTIES
+        VS_SHADER_ENTRYPOINT          main_ps
+        VS_SHADER_TYPE                Pixel
+        VS_SHADER_OUTPUT_HEADER_FILE  shaders/${file}.h
+        VS_SHADER_VARIABLE_NAME       k_${file}
+        VS_SHADER_MODEL               5.0)
+endmacro()
+
+macro(add_shader_as_header file)
+    list(APPEND shaders_files shaders/${file}.hlsl)
+    set_source_files_properties(shaders/${file}.hlsl PROPERTIES
+        HEADER_FILE_ONLY TRUE)
+endmacro()
+
+add_vs_shader(vs_basic_phong_lighting)
+add_vs_shader(vs_gooch_shading)
+add_vs_shader(vs_lines)
+add_vs_shader(vs_vertices_only)
+add_vs_shader(vs_normals)
+
+add_ps_shader(ps_basic_phong_lighting)
+add_ps_shader(ps_gooch_shading)
+add_ps_shader(ps_lines)
+add_ps_shader(ps_vertices_only)
+add_ps_shader(ps_normals)
+
+add_shader_as_header(common_basic_phong_lighting)
+add_shader_as_header(common_gooch_shading)
+add_shader_as_header(common_lines)
 
 set(src_files
     main.cpp
@@ -85,6 +53,8 @@ set(src_files
     render_vertices_only.cpp
     render_with_normals.cpp
     predefined_objects.cpp
+    imgui_state_debug.cpp
+    app_state.cpp
     )
 set(header_files
     stub_window.h
@@ -97,8 +67,10 @@ set(header_files
     render_with_normals.h
     predefined_objects.h
     dx_api.h
-    imgui_debug.h
+    imgui_state_debug.h
+    app_state.h
     )
+
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
 target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/_package/\"")
 target_compile_definitions(${exe_name} PRIVATE "XX_SHADERS_FOLDER=\"${PROJECT_SOURCE_DIR}/src/lr_app/shaders/\"")

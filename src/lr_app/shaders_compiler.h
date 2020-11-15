@@ -89,6 +89,7 @@ struct ShadersWatch
         ComPtr<ID3D11PixelShader> ps_shader;
     };
 
+    explicit ShadersWatch() = default;
     explicit ShadersWatch(ShadersCompiler& compiler);
 
     void watch_changes_to(const ShaderInfo& shader);
@@ -105,7 +106,7 @@ private:
     using BufferFor = std::aligned_storage_t<sizeof(T), alignof(T)>;
     struct Directory;
 
-    ShadersCompiler* compiler_;
+    ShadersCompiler* compiler_ = nullptr;
     std::vector<std::unique_ptr<Directory>> dirs_;
     wi::IoCompletionPort io_port_;
     std::vector<ShaderPatch> patches_;

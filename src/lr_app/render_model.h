@@ -29,9 +29,6 @@ struct RenderTexture
     static RenderTexture make(ID3D11Device& device, const Texture& texture);
 };
 
-#pragma warning(push)
-// structure was padded due to alignment specifier
-#pragma warning(disable:4324)
 struct RenderModel
 {
     // vs_basic_phong_lighting.hlsl
@@ -51,7 +48,6 @@ struct RenderModel
         glm::vec4 has_texture;
     };
 
-    const Model* model;
     std::vector<RenderMesh> meshes;
     std::vector<RenderTexture> textures;
 
@@ -75,4 +71,3 @@ struct RenderModel
         , const glm::mat4x4& view
         , const glm::mat4x4& projection) const;
 };
-#pragma warning(pop)

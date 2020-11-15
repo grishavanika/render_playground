@@ -102,7 +102,6 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
 /*static*/ RenderModel RenderModel::make(ID3D11Device& device, const Model& model)
 {
     RenderModel render{};
-    render.model = &model;
 
     // Create the constant buffer for VS.
     D3D11_BUFFER_DESC vs_bd{};

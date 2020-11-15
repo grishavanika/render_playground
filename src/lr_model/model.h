@@ -52,6 +52,13 @@ struct Model
     Model(Model&& rhs) noexcept;
 };
 
+struct FileModel
+{
+    std::string file_name;
+    std::string name;
+    Model model;
+};
+
 enum struct Capabilities : std::uint16_t
 {
     Default       = 0x0, // Minimum needed: vertices with faces/triangles
