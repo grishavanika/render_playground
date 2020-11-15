@@ -1,7 +1,12 @@
 #include "app_state.h"
 #include "shaders_database.h"
 
-/*static*/ AllKnownShaders AllKnownShaders::BuildKnownAtCompileTime()
+#include <ScopeGuard.h>
+
+#include <filesystem>
+#include <algorithm>
+
+/*static*/ AllKnownShaders AllKnownShaders::BuildKnownShaders()
 {
     VSShader vs_shaders[] =
     {
@@ -24,6 +29,20 @@
     all.vs_shaders_.assign(std::begin(vs_shaders), std::end(vs_shaders));
     all.ps_shaders_.assign(std::begin(ps_shaders), std::end(ps_shaders));
     return all;
+}
+
+void Init_KnownShaders(AppState& app)
+{
+    for (VSShader& vs : app.known_shaders_.vs_shaders_)
+    {
+        app.compiler_.create_vs(*app.device_.Get(), *vs.vs_info, vs.vs, vs.vs_layout);
+        app.watch_.watch_changes_to(*vs.vs_info);
+    }
+    for (PSShader& ps : app.known_shaders_.ps_shaders_)
+    {
+        app.compiler_.create_ps(*app.device_.Get(), *ps.ps_info, ps.ps);
+        app.watch_.watch_changes_to(*ps.ps_info);
+    }
 }
 
 // Virtual-Key Codes:
@@ -63,7 +82,7 @@ void TickInput(AppState& app)
 
 // Handling Window Resizing:
 // https://docs.microsoft.com/en-us/windows/win32/direct3ddxgi/d3d10-graphics-programming-guide-dxgi?redirectedfrom=MSDN#handling-window-resizing
-void OnWindowResize(AppState& app, float width, float height)
+static void OnWindowResize(AppState& app, float width, float height)
 {
     Panic(app.device_);
     Panic(app.swap_chain_);
@@ -120,7 +139,7 @@ void OnWindowResize(AppState& app, float width, float height)
 }
 
 // https://learnopengl.com/Getting-started/Camera
-void OnWindowMouseInput(AppState& app, HRAWINPUT handle)
+static void OnWindowMouseInput(AppState& app, HRAWINPUT handle)
 {
     RAWINPUT raw{};
     UINT size = sizeof(raw);
@@ -152,7 +171,7 @@ void OnWindowMouseInput(AppState& app, HRAWINPUT handle)
     app.camera_right_dir_ = glm::normalize(glm::cross(app.camera_front_dir_, app.camera_up_dir_));
 }
 
-void AddMessageHandling(AppState& app)
+void Init_MessageHandling(AppState& app)
 {
     app.window_.on_message(WM_PAINT
         , [](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
@@ -235,24 +254,166 @@ void AddMessageHandling(AppState& app)
         , [&app](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
         {
             HDROP drop = reinterpret_cast<HDROP>(wparam);
+            SCOPE_EXIT{ ::DragFinish(drop); };
             UINT files_count = ::DragQueryFileA(drop, UINT(0xFFFFFFFF), nullptr, 0);
             Panic(files_count != 0);
-            if (files_count > 1)
+            for (UINT file_index = 0; file_index < files_count; ++file_index)
             {
-                // We don't support multiple files drop.
-                ::DragFinish(drop);
-                return ::DefWindowProc(hwnd, message, wparam, lparam);
+                UINT length = ::DragQueryFileA(drop, file_index, nullptr, 0);
+                Panic(length != 0);
+                std::string file;
+                file.resize(length + 1);
+                length = ::DragQueryFileA(drop, file_index, &file[0], UINT(file.size()));
+                Panic(length != 0);
+                file.resize(length);
+                app.files_to_load_.push_back(std::move(file));
             }
-            UINT length = ::DragQueryFileA(drop, UINT(0), nullptr, 0);
-            Panic(length != 0);
-            std::string file;
-            file.resize(length + 1);
-            UINT final_length = ::DragQueryFileA(drop, UINT(0), &file[0], UINT(file.size()));
-            Panic(final_length != 0);
-            file.resize(final_length);
-            ::DragFinish(drop);
-
-            app.model_to_load_file_ = std::move(file);
             return ::DefWindowProc(hwnd, message, wparam, lparam);
         });
+}
+
+template<typename T>
+static void RemoveDuplicates(std::vector<T>& es)
+{
+    std::sort(std::begin(es), std::end(es));
+    auto it = std::unique(std::begin(es), std::end(es));
+    es.erase(it, std::end(es));
+}
+
+static std::string GetPathFileName(const std::string& path)
+{
+    auto name = std::filesystem::path(path).stem();
+    while (name.has_extension())
+    {
+        auto next = name.stem();
+        if (next == name)
+        {
+            break;
+        }
+        name = std::move(next);
+    }
+    return name.string();
+}
+
+static void TryLoadModelsFromPaths(AppState& app, std::vector<std::string> paths)
+{
+    std::vector<std::string> folders;
+    std::vector<std::string> files;
+    for (std::string& p : paths)
+    {
+        std::error_code ec;
+        std::filesystem::path path(p);
+        if (std::filesystem::is_directory(path, ec))
+        {
+            folders.push_back(std::move(p));
+        }
+        else if (std::filesystem::is_regular_file(path, ec))
+        {
+            files.push_back(path.make_preferred().string());
+            // We also want to get all files in the same directory.
+            folders.push_back(path.parent_path().make_preferred().string());
+        }
+        Panic(!ec);
+    }
+    RemoveDuplicates(folders);
+    // Collect all files in a folder.
+    for (std::string& f : folders)
+    {
+        for (const auto& e : std::filesystem::recursive_directory_iterator(f))
+        {
+            if (e.is_regular_file())
+            {
+                auto path = e.path();
+                files.push_back(path.make_preferred().string());
+            }
+        }
+    }
+    RemoveDuplicates(files);
+
+    std::vector<FileModel> models;
+    for (std::string& f : files)
+    {
+        auto maybe_model = LoadModel(f.c_str());
+        if (!maybe_model)
+        {
+            continue;
+        }
+        models.push_back({});
+        FileModel& fm = models.back();
+        fm.file_name = std::move(f);
+        fm.name = GetPathFileName(fm.file_name);
+        fm.model = std::move(maybe_model.value());
+    }
+
+    // #QQQ: need to merge instead - replace
+    // existing models with new one.
+    app.models_ = std::move(models);
+}
+
+bool TickModelsLoad(AppState& app)
+{
+    if (app.files_to_load_.size() > 0)
+    {
+        const bool force_select = (app.files_to_load_.size() == 1)
+            && (std::filesystem::is_regular_file(app.files_to_load_[0]));
+        const auto select_file = std::filesystem::path(app.files_to_load_[0]).make_preferred().string();
+
+        TryLoadModelsFromPaths(app, std::exchange(app.files_to_load_, {}));
+
+        // If we dropped single file, select it for convenience.
+        if (force_select)
+        {
+            for (std::size_t i = 0, count = app.models_.size(); i < count; ++i)
+            {
+                if (app.models_[i].file_name == select_file)
+                {
+                    app.imgui_.selected_model_index_ = int(i);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Model's change from the UI/initial change.
+    if ((app.imgui_.selected_model_index_ != app.active_model_index_)
+        && (std::size_t(app.imgui_.selected_model_index_) < app.models_.size()))
+    {
+        app.active_model_index_ = app.imgui_.selected_model_index_;
+        const Model& model = app.models_[std::size_t(app.imgui_.selected_model_index_)].model;
+
+        app.active_model_ = RenderModel::make(*app.device_.Get(), model);
+        SetShadersRef(app.active_model_, app.known_shaders_
+            , *app.known_shaders_.vs_shaders_[app.imgui_.model_vs_index].vs_info
+            , *app.known_shaders_.ps_shaders_[app.imgui_.model_ps_index].ps_info);
+        return true;
+    }
+    return false;
+}
+
+void TickShadersChange(AppState& app)
+{
+    if (app.watch_.collect_changes(*app.device_.Get()) <= 0)
+    {
+        return;
+    }
+    for (VSShader& vs : app.known_shaders_.vs_shaders_)
+    {
+        auto patch = app.watch_.fetch_latest(*vs.vs_info);
+        if (patch.vs_shader)
+        {
+            vs.vs = std::move(patch.vs_shader);
+            vs.vs_layout = std::move(patch.vs_layout);
+            Panic(vs.vs);
+            Panic(vs.vs_layout);
+        }
+    }
+    for (PSShader& ps : app.known_shaders_.ps_shaders_)
+    {
+        auto patch = app.watch_.fetch_latest(*ps.ps_info);
+        if (patch.ps_shader)
+        {
+            ps.ps = std::move(patch.ps_shader);
+            Panic(ps.ps);
+        }
+    }
 }

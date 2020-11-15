@@ -50,10 +50,21 @@ void ImGui_TweaksInput(ImGuiState& imgui)
         return;
     }
 
+    ImGui::Combo("Models", &imgui.selected_model_index_
+        , [](void* data, int idx, const char** out_text)
+    {
+        auto& models = *static_cast<const std::vector<FileModel>*>(data);
+        *out_text = models[std::size_t(idx)].name.c_str();
+        return true;
+    }
+        , &imgui.app_->models_
+        , int(imgui.app_->models_.size()));
+    ImGui::SameLine();
+    (void)ImGui::Checkbox("Show model", &imgui.show_model);
+
     (void)ImGui::Checkbox("Enable Mouse (M)", &imgui.enable_mouse);
     ImGui::SameLine();
     imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
-    (void)ImGui::Checkbox("Show model", &imgui.show_model);
     (void)ImGui::Checkbox("Show zero world space (red = x, green = y, blue = z)", &imgui.show_zero_world_space);
     (void)ImGui::Checkbox("Show light cube", &imgui.show_light_cube);
     const char* items[] = {"Static_AtCameraPosition", "Moving_Active", "Moving_Paused"};

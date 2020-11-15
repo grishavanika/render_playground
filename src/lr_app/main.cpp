@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <unordered_set>
+#include <filesystem>
 
 #include <cstdlib>
 
@@ -35,39 +36,14 @@
 #  error "Build system missed to specify where shaders are."
 #endif
 
-template<typename RenderObject>
-static void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
-    , const ShaderInfo& vs, const ShaderInfo& ps)
-{
-    for (VSShader& shader : all_shaders.vs_shaders_)
-    {
-        if (shader.vs_info == &vs)
-        {
-            o.vs_shader_ = &shader;
-            break;
-        }
-    }
-    for (PSShader& shader : all_shaders.ps_shaders_)
-    {
-        if (shader.ps_info == &ps)
-        {
-            o.ps_shader_ = &shader;
-            break;
-        }
-    }
-
-    Panic(o.vs_shader_);
-    Panic(o.ps_shader_);
-}
-
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
     AppState app;
     app.window_ = StubWindow("xxx_lr");
     app.watch_ = ShadersWatch(app.compiler_);
-    app.known_shaders_ = AllKnownShaders::BuildKnownAtCompileTime();
+    app.known_shaders_ = AllKnownShaders::BuildKnownShaders();
     app.imgui_.app_ = &app;
-    app.model_to_load_file_ = XX_PACKAGE_FOLDER R"(dragon.lr.bin)";
+    app.files_to_load_.push_back(XX_PACKAGE_FOLDER "dragon.lr.bin");
 
     // Accept WM_DROPFILES.
     ::DragAcceptFiles(app.window_.wnd(), TRUE);
@@ -79,7 +55,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     raw_mouse.hwndTarget = app.window_.wnd();
     Panic(::RegisterRawInputDevices(&raw_mouse, 1, sizeof(RAWINPUTDEVICE)));
 
-    AddMessageHandling(app);
+    Init_MessageHandling(app);
 
     Panic(::ShowWindow(app.window_.wnd(), SW_SHOW) == 0/*was previously hidden*/);
 
@@ -193,16 +169,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     SetShadersRef(render_bb, app.known_shaders_, c_vs_lines, c_ps_lines);
     SetShadersRef(render_light_cube, app.known_shaders_, c_vs_vertices_only, c_ps_vertices_only);
 
-    for (VSShader& vs : app.known_shaders_.vs_shaders_)
-    {
-        app.compiler_.create_vs(*app.device_.Get(), *vs.vs_info, vs.vs, vs.vs_layout);
-        app.watch_.watch_changes_to(*vs.vs_info);
-    }
-    for (PSShader& ps : app.known_shaders_.ps_shaders_)
-    {
-        app.compiler_.create_ps(*app.device_.Get(), *ps.ps_info, ps.ps);
-        app.watch_.watch_changes_to(*ps.ps_info);
-    }
+    Init_KnownShaders(app);
 
     render_lines.add_bb(glm::vec3(-1.f), glm::vec3(1.f)
         , glm::vec3(1.f, 0.f, 0.f));
@@ -239,43 +206,14 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             continue;
         }
 
-        if (app.model_to_load_file_.size() > 0)
+        if (TickModelsLoad(app))
         {
-            auto maybe_model = LoadModel(app.model_to_load_file_.c_str());
-            app.model_to_load_file_.clear();
-            if (maybe_model)
-            {
-                const Model& model = maybe_model.value();
-                app.active_model_ = RenderModel::make(*app.device_.Get(), model);
-                SetShadersRef(app.active_model_, app.known_shaders_, c_vs_gooch_shading, c_ps_gooch_shading);
-                render_bb.clear();
-                render_bb.add_bb(model.aabb_min_, model.aabb_max_, glm::vec3(1.f, 0.f, 0.f));
-            }
+            const Model& m = app.models_[std::size_t(app.active_model_index_)].model;
+            render_bb.clear();
+            render_bb.add_bb(m.aabb_min_, m.aabb_max_, glm::vec3(1.f, 0.f, 0.f));
         }
 
-        if (app.watch_.collect_changes(*app.device_.Get()) > 0)
-        {
-            for (VSShader& vs : app.known_shaders_.vs_shaders_)
-            {
-                auto patch = app.watch_.fetch_latest(*vs.vs_info);
-                if (patch.vs_shader)
-                {
-                    vs.vs = std::move(patch.vs_shader);
-                    vs.vs_layout = std::move(patch.vs_layout);
-                    Panic(vs.vs);
-                    Panic(vs.vs_layout);
-                }
-            }
-            for (PSShader& ps : app.known_shaders_.ps_shaders_)
-            {
-                auto patch = app.watch_.fetch_latest(*ps.ps_info);
-                if (patch.ps_shader)
-                {
-                    ps.ps = std::move(patch.ps_shader);
-                    Panic(ps.ps);
-                }
-            }
-        }
+        TickShadersChange(app);
 
         // Start the Dear ImGui frame.
         ImGui_ImplDX11_NewFrame();

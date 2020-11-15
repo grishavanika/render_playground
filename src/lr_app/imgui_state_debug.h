@@ -55,7 +55,7 @@ struct ImGuiState
     bool enable_mouse = false;
 
     AppState* app_ = nullptr;
-    int active_model_index_ = 0;
+    int selected_model_index_ = 0;
 
     bool check_wireframe_change()
     {

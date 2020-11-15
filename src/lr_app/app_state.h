@@ -10,18 +10,25 @@
 #include <vector>
 
 struct AppState;
+struct AllKnownShaders;
+
+void Init_MessageHandling(AppState& app);
+void Init_KnownShaders(AppState& app);
 
 void TickInput(AppState& app);
-void AddMessageHandling(AppState& app);
-void OnWindowResize(AppState& app, float width, float height);
-void OnWindowMouseInput(AppState& app, HRAWINPUT handle);
+bool TickModelsLoad(AppState& app);
+void TickShadersChange(AppState& app);
+
+template<typename RenderObject>
+void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
+    , const ShaderInfo& vs, const ShaderInfo& ps);
 
 struct AllKnownShaders
 {
     std::vector<VSShader> vs_shaders_;
     std::vector<PSShader> ps_shaders_;
 
-    static AllKnownShaders BuildKnownAtCompileTime();
+    static AllKnownShaders BuildKnownShaders();
 };
 
 struct AppState
@@ -56,5 +63,32 @@ struct AppState
     ComPtr<ID3D11RenderTargetView> render_target_view_;
     ComPtr<ID3D11DepthStencilView> depth_buffer_;
 
-    std::string model_to_load_file_;
+    std::vector<std::string> files_to_load_;
+    std::vector<FileModel> models_;
+    int active_model_index_ = -1;
 };
+
+template<typename RenderObject>
+void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
+    , const ShaderInfo& vs, const ShaderInfo& ps)
+{
+    for (VSShader& shader : all_shaders.vs_shaders_)
+    {
+        if (shader.vs_info == &vs)
+        {
+            o.vs_shader_ = &shader;
+            break;
+        }
+    }
+    for (PSShader& shader : all_shaders.ps_shaders_)
+    {
+        if (shader.ps_info == &ps)
+        {
+            o.ps_shader_ = &shader;
+            break;
+        }
+    }
+
+    Panic(o.vs_shader_);
+    Panic(o.ps_shader_);
+}

@@ -150,6 +150,10 @@ void RenderModel::render(ID3D11DeviceContext& device_context
     , const glm::mat4x4& view
     , const glm::mat4x4& projection) const
 {
+#if (0)
+    PanicShadersValid(vs_shader_, ps_shader_);
+#endif
+
     // Parameters for VS.
     VSConstantBuffer0 vs_cb0;
     vs_cb0.world = world;
@@ -168,8 +172,6 @@ void RenderModel::render(ID3D11DeviceContext& device_context
     ps_cb0.viewer_position = glm::vec4(viewer_position, 1.f);
     ps_cb0.light_position = glm::vec4(light_position, 1.f);
     ps_cb0.has_texture = has_texture ? glm::vec4(1.f) : glm::vec4(0.f);
-
-    PanicShadersValid(vs_shader_, ps_shader_);
 
     for (const RenderMesh& render_mesh : meshes)
     {
