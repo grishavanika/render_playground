@@ -108,7 +108,8 @@ static void OnWindowResize(GameState& game, float width, float height)
     depthTextureDesc.Height = UINT(height);
     depthTextureDesc.MipLevels = 1;
     depthTextureDesc.ArraySize = 1;
-    depthTextureDesc.SampleDesc.Count = 1;
+    depthTextureDesc.SampleDesc.Count = 4;
+    depthTextureDesc.SampleDesc.Quality = 0;
     depthTextureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     depthTextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
@@ -581,7 +582,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     sc_desc.BufferDesc.RefreshRate.Denominator = 1;
     sc_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sc_desc.OutputWindow = window.wnd();
-    sc_desc.SampleDesc.Count = 1;
+    sc_desc.SampleDesc.Count = 4;
     sc_desc.SampleDesc.Quality = 0;
     sc_desc.Windowed = TRUE;
 
@@ -624,7 +625,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     dept_texture_desc.Height = client_height;
     dept_texture_desc.MipLevels = 1;
     dept_texture_desc.ArraySize = 1;
-    dept_texture_desc.SampleDesc.Count = 1;
+    dept_texture_desc.SampleDesc.Count = 4;
+    dept_texture_desc.SampleDesc.Quality = 0;
     dept_texture_desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     dept_texture_desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
@@ -645,7 +647,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     wfd.FillMode = D3D11_FILL_SOLID;
     wfd.CullMode = D3D11_CULL_NONE;
     wfd.DepthClipEnable = TRUE;
-    wfd.AntialiasedLineEnable = TRUE;
+    wfd.AntialiasedLineEnable = FALSE;
+    wfd.MultisampleEnable = TRUE;
     ComPtr<ID3D11RasterizerState> rasterizer_state;
     hr = game.device_->CreateRasterizerState(&wfd, &rasterizer_state);
     Panic(SUCCEEDED(hr));
