@@ -40,12 +40,21 @@ struct RenderModel
     };
 
     // ps_basic_phong_lighting.hlsl
-    struct PSConstantBuffer0
+    struct PointLight
     {
         glm::vec4 light_color;
         glm::vec4 light_position;
+    };
+
+    static constexpr unsigned k_max_lights_count = 16;
+
+    struct PSConstantBuffer0
+    {
+        PointLight lights[k_max_lights_count];
         glm::vec4 viewer_position;
-        glm::vec4 has_texture;
+        // x = has textures
+        // y = lights count
+        glm::vec4 parameters;
     };
 
     std::vector<RenderMesh> meshes;

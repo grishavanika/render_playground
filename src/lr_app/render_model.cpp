@@ -168,10 +168,13 @@ void RenderModel::render(ID3D11DeviceContext& device_context
 
     // Parameters for PS.
     PSConstantBuffer0 ps_cb0;
-    ps_cb0.light_color = glm::vec4(light_color, 1.f);
+    ps_cb0.lights[0].light_color = glm::vec4(light_color, 1.f);
+    ps_cb0.lights[0].light_position = glm::vec4(light_position, 1.f);
+
     ps_cb0.viewer_position = glm::vec4(viewer_position, 1.f);
-    ps_cb0.light_position = glm::vec4(light_position, 1.f);
-    ps_cb0.has_texture = has_texture ? glm::vec4(1.f) : glm::vec4(0.f);
+    ps_cb0.parameters = glm::vec4(0.f);
+    ps_cb0.parameters.x = (has_texture ? 1.f : 0.f);
+    ps_cb0.parameters.y = 1.f; // Lights count.
 
     for (const RenderMesh& render_mesh : meshes)
     {
