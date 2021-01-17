@@ -34,6 +34,7 @@ add_subdirectory(src/model)
 # exe
 add_subdirectory(src/app)
 add_subdirectory(src/export)
+add_subdirectory(src/app_vulkan)
 
 # tests
 
