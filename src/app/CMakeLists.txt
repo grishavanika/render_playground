@@ -1,4 +1,4 @@
-set(exe_name lr_app)
+set(exe_name app)
 
 set(shaders_files)
 
@@ -73,7 +73,7 @@ set(header_files
 
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
 target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/_package/\"")
-target_compile_definitions(${exe_name} PRIVATE "XX_SHADERS_FOLDER=\"${PROJECT_SOURCE_DIR}/src/lr_app/shaders/\"")
+target_compile_definitions(${exe_name} PRIVATE "XX_SHADERS_FOLDER=\"${PROJECT_SOURCE_DIR}/src/app/shaders/\"")
 
 target_compile_definitions(${exe_name} PRIVATE UNICODE _UNICODE)
 if (${gcc_on_msvc})
@@ -88,7 +88,7 @@ endif()
 set_all_warnings(${exe_name} PRIVATE)
 
 # Own dependencies.
-target_link_libraries(${exe_name} lr_model)
+target_link_libraries(${exe_name} model)
 
 # Generated shaders.
 target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

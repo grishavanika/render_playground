@@ -1,4 +1,4 @@
-set(exe_name lr_export)
+set(exe_name export)
 
 set(src_files
     main.cpp
@@ -12,7 +12,7 @@ target_compile_definitions(${exe_name} PRIVATE "XX_ASSETS_FOLDER=\"${PROJECT_SOU
 set_all_warnings(${exe_name} PRIVATE)
 
 # Own dependencies.
-target_link_libraries(${exe_name} lr_model)
+target_link_libraries(${exe_name} model)
 
 # Third-party.
 target_link_libraries(${exe_name} Assimp_Integrated)

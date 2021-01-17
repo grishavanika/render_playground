@@ -1,4 +1,4 @@
-set(lib_name lr_model)
+set(lib_name model)
 
 set(src_files
     model.cpp

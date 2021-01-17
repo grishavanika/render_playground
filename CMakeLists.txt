@@ -1,6 +1,6 @@
 # Require 3.11+ for FetchContent* support
 cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
-project(lr)
+project(render_playground)
 
 include(CheckCXXCompilerFlag)
 include(GenerateExportHeader)
@@ -30,11 +30,11 @@ endif()
 add_subdirectory(third_party)
 
 # libraries
-add_subdirectory(src/lr_model)
+add_subdirectory(src/model)
 # exe
-add_subdirectory(src/lr_app)
-add_subdirectory(src/lr_export)
+add_subdirectory(src/app)
+add_subdirectory(src/export)
 
 # tests
 
-set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "lr_app")
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "app")
