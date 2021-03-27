@@ -1,7 +1,7 @@
 ### Run
 
 ```
-# Convert raw .obj into "simple" internal format.
+# Convert raw .obj into internal format.
 lr_export.exe assets\_package assets\skull\skull.obj
 # Load assets\_package\skull.lr.bin model.
 ```
@@ -11,6 +11,10 @@ lr_export.exe assets\_package assets\skull\skull.obj
 ![](sample.png)
 
 ### Build
+
+WARNING: currently path to Vulkan SDK is hardcoded to be in
+C:/Programs/VulkanSDK/1.2.170.0 folder (third_party/vulkan_integration.cmake file).
+Sorry.
 
 #### Build and configure as fast as possible
 

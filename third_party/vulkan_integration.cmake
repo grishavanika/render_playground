@@ -7,6 +7,6 @@ add_library(Vulkan_Integrated INTERFACE)
 # TODO: temporary hard-code paths. Nice find_package()
 # or something similar should be there.
 target_include_directories(Vulkan_Integrated INTERFACE
-    "C:/Programs/VulkanSDK/1.2.162.1/Include")
+    "C:/Programs/VulkanSDK/1.2.170.0/Include")
 target_link_libraries(Vulkan_Integrated INTERFACE
-    "C:/Programs/VulkanSDK/1.2.162.1/Lib/vulkan-1.lib")
+    "C:/Programs/VulkanSDK/1.2.170.0/Lib/vulkan-1.lib")
