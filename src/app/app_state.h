@@ -40,18 +40,23 @@ struct AppState
     RenderModel active_model_;
     ImGuiState imgui_;
 
-    float fov_y_ = DegreesToRadians(45.f);
+    glm::mat4x4 model_rotation_ = glm::mat4x4(1.f);
+    bool is_model_rotation_active_ = false;
+
+    float fov_y_ = glm::radians(45.f);
     float window_width_ = 0.f;
     float window_height_ = 0.f;
     float mouse_scroll_sensitivity_ = 0.05f;
-    float camera_yaw_degrees_ = 90.f;  // [-180; 180]
-    float camera_pitch_degrees_ = 0.f; // [-90; 90]
-    float camera_rotation_mouse_sensitivity_ = 0.06f;
-    float camera_move_speed_ = 0.2f;
+    float camera_yaw_ = glm::radians(90.f);  // [-180; 180]
+    float camera_pitch_ = glm::radians(0.f); // [-90; 90]
+    float camera_rotation_sensitivity_ = 0.05f;
+    float model_rotation_sensitivity_ = 0.25f;
+    float camera_move_XZ_speed_ = 0.1f;
+    float camera_move_Y_speed_ = 0.05f;
 
     std::unordered_set<WPARAM> keys_down_;
 
-    glm::vec3 camera_position_ = glm::vec3(0.0f, 0.0f, -15.0f);
+    glm::vec3 camera_position_ = glm::vec3(0.0f, 0.0f, -3.0f);
     glm::vec3 camera_up_dir_ = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 camera_front_dir_ = glm::vec3(0.0f, 0.0f, 1.0f);
     glm::vec3 camera_right_dir_ = glm::vec3(1.0f, 0.0f, 0.0f);

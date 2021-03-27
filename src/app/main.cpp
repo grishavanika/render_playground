@@ -67,12 +67,9 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     app.window_height_ = float(client_height);
     
     { // Calculate default camera orientation from initial angles.
-        const float yaw = DegreesToRadians(app.camera_yaw_degrees_);
-        const float pitch = DegreesToRadians(app.camera_pitch_degrees_);
-
-        const float x = cosf(yaw) * cosf(pitch);
-        const float y = sinf(pitch);
-        const float z = sinf(yaw) * cosf(pitch);
+        const float x = cosf(app.camera_yaw_) * cosf(app.camera_pitch_);
+        const float y = sinf(app.camera_pitch_);
+        const float z = sinf(app.camera_yaw_) * cosf(app.camera_pitch_);
 
         app.camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
         app.camera_right_dir_ = glm::normalize(glm::cross(app.camera_front_dir_, app.camera_up_dir_));
@@ -236,7 +233,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 
         app.active_model_.world = glm::mat4x4(1.f)
             * app.imgui_.get_model_scale()
-            * app.imgui_.get_model_rotation();
+            * app.model_rotation_;
         render_bb.world = app.active_model_.world;
         app.active_model_.light_color = app.imgui_.light_color;
         app.active_model_.viewer_position = app.camera_position_;

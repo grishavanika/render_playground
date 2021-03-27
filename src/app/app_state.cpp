@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <algorithm>
 
+#include <glm/gtc/epsilon.hpp>
+
 /*static*/ AllKnownShaders AllKnownShaders::BuildKnownShaders()
 {
     VSShader vs_shaders[] =
@@ -51,31 +53,31 @@ void TickInput(AppState& app)
 {
     if (app.keys_down_.contains(0x57)) // W
     {
-        app.camera_position_ += (app.camera_front_dir_ * app.camera_move_speed_);
+        app.camera_position_ += (app.camera_front_dir_ * app.camera_move_XZ_speed_);
     }
     if (app.keys_down_.contains(0x53)) // S
     {
-        app.camera_position_ -= (app.camera_front_dir_ * app.camera_move_speed_);
+        app.camera_position_ -= (app.camera_front_dir_ * app.camera_move_XZ_speed_);
     }
     if (app.keys_down_.contains(0x41)) // A
     {
-        app.camera_position_ += (app.camera_right_dir_ * app.camera_move_speed_);
+        app.camera_position_ += (app.camera_right_dir_ * app.camera_move_XZ_speed_);
     }
     if (app.keys_down_.contains(0x44)) // D
     {
-        app.camera_position_ -= (app.camera_right_dir_ * app.camera_move_speed_);
+        app.camera_position_ -= (app.camera_right_dir_ * app.camera_move_XZ_speed_);
     }
     if (app.keys_down_.contains(0x51)) // Q
     {
-        app.camera_position_ -= (app.camera_up_dir_ * app.camera_move_speed_);
+        app.camera_position_ -= (app.camera_up_dir_ * app.camera_move_Y_speed_);
     }
     if (app.keys_down_.contains(0x45)) // E
     {
-        app.camera_position_ += (app.camera_up_dir_ * app.camera_move_speed_);
+        app.camera_position_ += (app.camera_up_dir_ * app.camera_move_Y_speed_);
     }
     if (app.keys_down_.contains(0x4D)) // M
     {
-        app.imgui_.enable_mouse = !app.imgui_.enable_mouse;
+        app.imgui_.enable_camera_rotation = !app.imgui_.enable_camera_rotation;
         app.keys_down_.erase(0x4D);
     }
 }
@@ -138,7 +140,6 @@ static void OnWindowResize(AppState& app, float width, float height)
     app.vp_.Height = height;
 }
 
-// https://learnopengl.com/Getting-started/Camera
 static void OnWindowMouseInput(AppState& app, HRAWINPUT handle)
 {
     RAWINPUT raw{};
@@ -154,21 +155,67 @@ static void OnWindowMouseInput(AppState& app, HRAWINPUT handle)
     const LONG x_delta = raw.data.mouse.lLastX;
     const LONG y_delta = raw.data.mouse.lLastY;
 
-    const float d_yaw = (float(x_delta) * app.camera_rotation_mouse_sensitivity_);
-    const float d_pitch = (float(y_delta) * app.camera_rotation_mouse_sensitivity_);
+    if (raw.data.mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_DOWN)
+    {
+        app.is_model_rotation_active_ = true;
+    }
+    if (raw.data.mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_UP)
+    {
+        app.is_model_rotation_active_ = false;
+    }
 
-    app.camera_yaw_degrees_ -= d_yaw;
-    app.camera_pitch_degrees_ = std::clamp(app.camera_pitch_degrees_ - d_pitch, -89.0f, 89.0f);
+    if (!app.imgui_.enable_model_rotation)
+    {
+        app.is_model_rotation_active_ = false;
+    }
 
-    const float yaw = DegreesToRadians(app.camera_yaw_degrees_);
-    const float pitch = DegreesToRadians(app.camera_pitch_degrees_);
+    if (app.is_model_rotation_active_)
+    {
+        // Second approach:
+        // https://stackoverflow.com/questions/28115770/opengl-rotate-an-object-using-the-mouse-c.
+        const glm::vec3 kYUp(0.f, 1.f, 0.f);
 
-    const float x = cosf(yaw) * cosf(pitch);
-    const float y = sinf(pitch);
-    const float z = sinf(yaw) * cosf(DegreesToRadians(app.camera_pitch_degrees_));
+        if ((std::abs(x_delta) > 0.f))
+        {
+            // Rotate around Y axis.
+            app.model_rotation_ = glm::rotate(app.model_rotation_
+                , glm::radians(-1.f * x_delta * app.model_rotation_sensitivity_)
+                , kYUp);
+        }
 
-    app.camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
-    app.camera_right_dir_ = glm::normalize(glm::cross(app.camera_front_dir_, app.camera_up_dir_));
+        if ((std::abs(y_delta) > 0.f))
+        {
+            // Rotate in view direction plane.
+            auto rotate_axis = glm::cross(app.camera_front_dir_, kYUp);
+            const bool is_valid = !glm::all(glm::lessThan(glm::abs(rotate_axis), glm::vec3(glm::epsilon<float>())));
+            if (is_valid)
+            {
+                app.model_rotation_ = glm::rotate(
+                    app.model_rotation_
+                    , glm::radians(1.f * y_delta * app.model_rotation_sensitivity_)
+                    , rotate_axis);
+            }
+        }
+    }
+
+    if (app.imgui_.enable_camera_rotation
+        && !app.is_model_rotation_active_)
+    {
+        // https://learnopengl.com/Getting-started/Camera.
+        const float d_yaw   = glm::radians(float(x_delta) * app.camera_rotation_sensitivity_);
+        const float d_pitch = glm::radians(float(y_delta) * app.camera_rotation_sensitivity_);
+
+        app.camera_yaw_   -= d_yaw;
+        app.camera_pitch_ -= d_pitch;
+        app.camera_pitch_ = std::clamp(app.camera_pitch_, glm::radians(-89.0f), glm::radians(89.0f));
+
+        const float x = cosf(app.camera_yaw_) * cosf(app.camera_pitch_);
+        const float y = sinf(app.camera_pitch_);
+        const float z = sinf(app.camera_yaw_) * cosf(app.camera_pitch_);
+
+        app.camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
+        app.camera_right_dir_ = glm::normalize(glm::cross(app.camera_front_dir_, app.camera_up_dir_));
+    }
 }
 
 void Init_MessageHandling(AppState& app)
@@ -212,14 +259,14 @@ void Init_MessageHandling(AppState& app)
             }
             const float delta_wheel = GET_WHEEL_DELTA_WPARAM(wparam);
             const float dv = (delta_wheel / WHEEL_DELTA) * app.mouse_scroll_sensitivity_;
-            app.fov_y_ = std::clamp(app.fov_y_ - dv, DegreesToRadians(1.f), DegreesToRadians(90.f));
+            app.fov_y_ = std::clamp(app.fov_y_ - dv, glm::radians(1.f), glm::radians(90.f));
             return ::DefWindowProc(hwnd, message, wparam, lparam);
         });
 
     app.window_.on_message(WM_INPUT
         , [&app](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
         {
-            if (ImGui::GetIO().WantCaptureMouse || !app.imgui_.enable_mouse)
+            if (ImGui::GetIO().WantCaptureMouse)
             {
                 // ImGui is in priority.
                 return ::DefWindowProc(hwnd, message, wparam, lparam);

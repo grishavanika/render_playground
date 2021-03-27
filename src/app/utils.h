@@ -18,8 +18,3 @@ inline void Panic(bool condition)
     assert(false);
     std::exit(1);
 }
-
-inline float DegreesToRadians(float degrees)
-{
-    return (degrees * 0.01745329252f); // 3.14 / 180
-}

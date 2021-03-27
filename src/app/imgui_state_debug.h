@@ -36,9 +36,6 @@ struct ImGuiState
 
     // Model.
     float model_scale = 1.f;
-    // Pitch, Yaw, Roll.
-    // http://hugin.sourceforge.net/docs/manual/Image_positioning_model.html#:~:text=Positive%20Roll%20values%20mean%20the,%2B90%C2%B0%20(Zenith).
-    ImVec4 model_rotation = ImVec4(0.f, 180.f, 0.f, 0.f);
 
     int model_vs_index = 0;
     int model_ps_index = 0;
@@ -52,7 +49,8 @@ struct ImGuiState
     LightMode light_mode = LightMode::Moving_Active;
     float light_move_radius = 10.f;
     bool show_cube_normals = false;
-    bool enable_mouse = false;
+    bool enable_camera_rotation = false;
+    bool enable_model_rotation = true;
 
     AppState* app_ = nullptr;
     int selected_model_index_ = 0;
@@ -69,12 +67,5 @@ struct ImGuiState
     glm::mat4x4 get_model_scale() const
     {
         return glm::scale(glm::mat4x4(1.f), glm::vec3(model_scale));
-    }
-    glm::mat4x4 get_model_rotation() const
-    {
-        const float pitch = DegreesToRadians(model_rotation.x);
-        const float yaw = DegreesToRadians(model_rotation.y);
-        const float roll = DegreesToRadians(model_rotation.z);
-        return glm::eulerAngleXYZ(pitch, yaw, roll);
     }
 };

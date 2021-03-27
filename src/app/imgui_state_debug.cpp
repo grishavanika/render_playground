@@ -1,3 +1,5 @@
+#include <cmath> // Fix external libraries warning/errors :(
+
 #include "imgui_state_debug.h"
 #include "app_state.h"
 #include "render_model.h"
@@ -62,8 +64,9 @@ void ImGui_TweaksInput(ImGuiState& imgui)
     ImGui::SameLine();
     (void)ImGui::Checkbox("Show model", &imgui.show_model);
 
-    (void)ImGui::Checkbox("Enable Mouse (M)", &imgui.enable_mouse);
-    ImGui::SameLine();
+    (void)ImGui::Checkbox("Enable camera rotation (M)", &imgui.enable_camera_rotation);
+    (void)ImGui::Checkbox("Enable model rotation", &imgui.enable_model_rotation);
+
     imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
     (void)ImGui::Checkbox("Show zero world space (red = x, green = y, blue = z)", &imgui.show_zero_world_space);
     (void)ImGui::Checkbox("Show light cube", &imgui.show_light_cube);
@@ -74,9 +77,6 @@ void ImGui_TweaksInput(ImGuiState& imgui)
     (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
     (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
     (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 8.f);
-
-    (void)ImGui::SliderFloat3("Model rotation (Pitch, Yaw, Roll)", (float*)&imgui.model_rotation, -180., 180.f);
-    imgui.model_rotation.x = std::clamp(imgui.model_rotation.x, -90.f, 90.f);
 
     (void)ImGui::SliderFloat3("Camera position", (float*)&imgui.app_->camera_position_, -100.f, 100.f);
 
