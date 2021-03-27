@@ -26,8 +26,9 @@ else ()
     set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
     # and importers;
     set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
-    # only OBJ format.
+    # only OBJ and FBX formats.
     set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
+    set(ASSIMP_BUILD_FBX_IMPORTER ON CACHE BOOL "" FORCE)
 
     add_subdirectory(${assimp_content_SOURCE_DIR} ${assimp_content_BINARY_DIR} EXCLUDE_FROM_ALL)
     set(BUILD_SHARED_LIBS ${xx_assimp_BUILD_SHARED_LIBS} CACHE BOOL "" FORCE)
