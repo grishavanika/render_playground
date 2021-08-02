@@ -18,9 +18,11 @@ add_library(ImGui_Core
 	${imgui_SOURCE_DIR}/imgui.cpp
 	${imgui_SOURCE_DIR}/imgui_demo.cpp
 	${imgui_SOURCE_DIR}/imgui_draw.cpp
-	${imgui_SOURCE_DIR}/imgui_widgets.cpp)
+	${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp)
 
 target_include_directories(ImGui_Core PUBLIC ${imgui_SOURCE_DIR})
+target_include_directories(ImGui_Core PUBLIC ${imgui_SOURCE_DIR}/backends)
 
 add_library(ImGui_Cpp
 	${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h
@@ -31,10 +33,10 @@ target_link_libraries(ImGui_Cpp PRIVATE ImGui_Core)
 
 # sdl/opengl3/GL3W
 add_library(ImGui_Impl
-	${imgui_SOURCE_DIR}/examples/imgui_impl_dx11.cpp
-	${imgui_SOURCE_DIR}/examples/imgui_impl_dx11.h
-	${imgui_SOURCE_DIR}/examples/imgui_impl_win32.cpp
-	${imgui_SOURCE_DIR}/examples/imgui_impl_win32.h
+	${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
+	${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.h
+	${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
+	${imgui_SOURCE_DIR}/backends/imgui_impl_win32.h
 	)
 
 target_include_directories(ImGui_Impl PUBLIC ${imgui_SOURCE_DIR}/examples)

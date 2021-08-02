@@ -625,16 +625,34 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         Panic(vkEndCommandBuffer(command_buffers[i]));
     }
 
+    const std::size_t k_MaxFramesInFlight = 2;
+
     VkSemaphoreCreateInfo semaphore_info{};
     semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     semaphore_info.pNext = nullptr;
     semaphore_info.flags = 0;
 
-    VkSemaphore semaphore_image_available{};
-    VkSemaphore semaphore_render_finished{};
-    Panic(vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphore_image_available));
-    Panic(vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphore_render_finished));
+    VkFenceCreateInfo fence_info{};
+    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_info.pNext = nullptr;
+    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+    std::vector<VkSemaphore> semaphores_image_available{};
+    std::vector<VkSemaphore> semaphores_render_finished{};
+    std::vector<VkFence> in_flight_fences{};
+    std::vector<VkFence> in_flight_images{};
+    semaphores_image_available.resize(k_MaxFramesInFlight);
+    semaphores_render_finished.resize(k_MaxFramesInFlight);
+    in_flight_fences.resize(k_MaxFramesInFlight);
+    in_flight_images.resize(swapchain_images.size(), VK_NULL_HANDLE);
+    for (std::size_t i = 0; i < k_MaxFramesInFlight; ++i)
+    {
+        Panic(vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphores_image_available[i]));
+        Panic(vkCreateSemaphore(device, &semaphore_info, nullptr, &semaphores_render_finished[i]));
+        Panic(vkCreateFence(device, &fence_info, nullptr, &in_flight_fences[i]));
+    }
+
+    std::size_t current_frame = 0;
     // Main loop.
     MSG msg{};
     while (WM_QUIT != msg.message)
@@ -646,46 +664,62 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             continue;
         }
 
+        Panic(vkWaitForFences(device, 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX));
+        Panic(vkResetFences(device, 1, &in_flight_fences[current_frame]));
+
         uint32_t image_index = 0;
         Panic(vkAcquireNextImageKHR(device
             , swapchain
             , UINT64_MAX
-            , semaphore_image_available
+            , semaphores_image_available[current_frame]
             , VK_NULL_HANDLE
             , &image_index));
+        // Check if a previous frame is using this image (i.e. there is its fence to wait on).
+        if (in_flight_images[image_index] != VK_NULL_HANDLE)
+        {
+            Panic(vkWaitForFences(device, 1, &in_flight_images[image_index], VK_TRUE, UINT64_MAX));
+        }
+        // Mark the image as now being in use by this frame.
+        in_flight_images[image_index] = in_flight_fences[current_frame];
 
         VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         VkSubmitInfo submit_info{};
         submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.pNext = nullptr;
         submit_info.waitSemaphoreCount = 1;
-        submit_info.pWaitSemaphores = &semaphore_image_available;
+        submit_info.pWaitSemaphores = &semaphores_image_available[current_frame];
         submit_info.pWaitDstStageMask = wait_stages;
         submit_info.commandBufferCount = 1;
         submit_info.pCommandBuffers = &command_buffers[image_index];
         submit_info.signalSemaphoreCount = 1;
-        submit_info.pSignalSemaphores = &semaphore_render_finished;
-        Panic(vkQueueSubmit(graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+        submit_info.pSignalSemaphores = &semaphores_render_finished[current_frame];
+        Panic(vkResetFences(device, 1, &in_flight_fences[current_frame]));
+        Panic(vkQueueSubmit(graphics_queue, 1, &submit_info, in_flight_fences[current_frame]));
 
         VkPresentInfoKHR present_info{};
         present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         present_info.pNext = nullptr;
         present_info.waitSemaphoreCount = 1;
-        present_info.pWaitSemaphores = &semaphore_render_finished;
+        present_info.pWaitSemaphores = &semaphores_render_finished[current_frame];
         present_info.swapchainCount = 1;
         present_info.pSwapchains = &swapchain;
         present_info.pImageIndices = &image_index;
         present_info.pResults = nullptr;
 
         Panic(vkQueuePresentKHR(graphics_queue, &present_info));
-        Panic(vkQueueWaitIdle(graphics_queue));
+        
+        current_frame = ((current_frame + 1) % k_MaxFramesInFlight);
     }
 
     Panic(vkDeviceWaitIdle(device));
 
     // Destroy.
-    vkDestroySemaphore(device, semaphore_render_finished, nullptr);
-    vkDestroySemaphore(device, semaphore_image_available, nullptr);
+    for (std::size_t i = 0; i < k_MaxFramesInFlight; ++i)
+    {
+        vkDestroySemaphore(device, semaphores_render_finished[i], nullptr);
+        vkDestroySemaphore(device, semaphores_image_available[i], nullptr);
+        vkDestroyFence(device, in_flight_fences[i], nullptr);
+    }
     vkDestroyCommandPool(device, command_pool, nullptr);
     for (VkFramebuffer framebuffer : framebuffers)
     {
