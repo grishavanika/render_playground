@@ -2,7 +2,8 @@ set(exe_name app_vulkan)
 
 set(src_files
     # main.cpp
-    main_vertext.cpp
+    # main_vertext.cpp
+    main_staging.cpp
     )
 
 set(header_files
