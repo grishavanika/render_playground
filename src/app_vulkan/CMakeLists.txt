@@ -1,8 +1,10 @@
 set(exe_name app_vulkan)
 
 set(src_files
-    main.cpp
+    # main.cpp
+    main_vertext.cpp
     )
+
 set(header_files
     stub_window.h
     utils.h
@@ -11,6 +13,7 @@ set(header_files
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
 target_link_libraries(${exe_name} PRIVATE Vulkan_Integrated)
 target_compile_definitions(${exe_name} PRIVATE UNICODE _UNICODE)
+target_link_libraries(${exe_name} PRIVATE glm_Interface)
 
 if (${gcc_on_msvc})
     # Make GCC aware about wmain()
