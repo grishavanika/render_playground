@@ -79,27 +79,26 @@ struct ShadersCompiler
         , std::string& error_text);
 };
 
+struct ShaderPatch
+{
+    const ShaderInfo* shader_info;
+    const void* user_data;
+    ComPtr<ID3D11VertexShader> vs_shader;
+    ComPtr<ID3D11InputLayout> vs_layout;
+    ComPtr<ID3D11PixelShader> ps_shader;
+};
+
 struct ShadersWatch
 {
-    struct ShaderPatch
-    {
-        const ShaderInfo* shader_info;
-        ComPtr<ID3D11VertexShader> vs_shader;
-        ComPtr<ID3D11InputLayout> vs_layout;
-        ComPtr<ID3D11PixelShader> ps_shader;
-    };
-
     explicit ShadersWatch() = default;
     explicit ShadersWatch(ShadersCompiler& compiler);
 
-    void watch_changes_to(const ShaderInfo& shader);
-    ShaderPatch fetch_latest(const ShaderInfo& shader);
+    void watch_changes_to(const ShaderInfo& shader, const void* user_data);
 
-    int collect_changes(ID3D11Device& device);
+    std::vector<ShaderPatch> collect_changes(ID3D11Device& device);
 
 private:
-    void add_watch(const ShaderInfo& shader, const wchar_t* file);
-    void add_newest_patch(ShaderPatch patch);
+    void add_watch(const ShaderInfo& shader, const wchar_t* file, const void* user_data);
 
 private:
     template<typename T>
@@ -109,18 +108,23 @@ private:
     ShadersCompiler* compiler_ = nullptr;
     std::vector<std::unique_ptr<Directory>> dirs_;
     wi::IoCompletionPort io_port_;
-    std::vector<ShaderPatch> patches_;
+
+    struct ShaderState
+    {
+        const ShaderInfo* info_;
+        const void* user_data_;
+    };
+
+    struct FileShadersDeps
+    {
+        std::wstring file_name;
+        std::vector<ShaderState> shaders;
+    };
 
     struct Directory
     {
-        struct FileMap
-        {
-            std::wstring file_name;
-            std::vector<const ShaderInfo*> shaders;
-        };
-
         std::wstring directory_path;
-        std::vector<FileMap> files;
+        std::vector<FileShadersDeps> files;
 
         DWORD buffer[1024];
         BufferFor<wi::DirectoryChanges> watcher_data;

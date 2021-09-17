@@ -11,11 +11,10 @@
 struct AppState;
 struct ImGuiState;
 struct RenderModel;
-struct AllKnownShaders;
 
 void ImGui_Setup(AppState& app);
 void ImGui_TweaksInput(ImGuiState& imgui);
-void ImGui_ModelInput(ImGuiState& imgui);
+void ImGui_ShadersInput(ImGuiState& imgui);
 void TickImGui(AppState& app);
 
 enum class LightMode : int
@@ -31,7 +30,6 @@ struct ImGuiState
     bool show = false;
 
     // Lighting.
-    float light_power = 5.f;
     glm::vec3 light_color = glm::vec3(1.f);
 
     // Model.

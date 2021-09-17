@@ -41,7 +41,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     AppState app;
     app.window_ = StubWindow("xxx_lr");
     app.watch_ = ShadersWatch(app.compiler_);
-    app.known_shaders_ = AllKnownShaders::BuildKnownShaders();
+    app.all_shaders_ = Shaders::Build();
     app.imgui_.app_ = &app;
     app.files_to_load_.push_back(XX_PACKAGE_FOLDER "dragon.lr.bin");
 
@@ -159,12 +159,14 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     ImGui_Setup(app);
 
     RenderLines render_lines = RenderLines::make(app.device_);
+    render_lines.vs_shader_ = app.all_shaders_.find_vs(c_vs_lines);
+    render_lines.ps_shader_ = app.all_shaders_.find_ps(c_ps_lines);
     RenderLines render_bb = RenderLines::make(app.device_);
+    render_bb.vs_shader_ = app.all_shaders_.find_vs(c_vs_lines);
+    render_bb.ps_shader_ = app.all_shaders_.find_ps(c_ps_lines);
     RenderVertices render_light_cube = make_cube_vertices_only(app.device_);
-
-    SetShadersRef(render_lines, app.known_shaders_, c_vs_lines, c_ps_lines);
-    SetShadersRef(render_bb, app.known_shaders_, c_vs_lines, c_ps_lines);
-    SetShadersRef(render_light_cube, app.known_shaders_, c_vs_vertices_only, c_ps_vertices_only);
+    render_light_cube.vs_shader_ = app.all_shaders_.find_vs(c_vs_vertices_only);
+    render_light_cube.ps_shader_ = app.all_shaders_.find_ps(c_ps_vertices_only);
 
     Init_KnownShaders(app);
 

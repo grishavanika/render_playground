@@ -320,9 +320,8 @@ static void LogCapabilities(std::uint16_t capabilities)
 
 int main(int argc, char* argv[])
 {
-    Panic(argc >= 3);
-    const fs::path model_file = argv[2];
-    const char* output_path = argv[1];
+    Panic(argc >= 2);
+    const fs::path model_file = argv[1];
 
     std::printf("Loading '%s' file.\n", model_file.string().c_str());
 
@@ -390,8 +389,7 @@ int main(int argc, char* argv[])
     const std::uint32_t final_size = offset;
     offset = 0;
 
-    fs::path bin_file = output_path;
-    bin_file /= (model_file.stem().string() + ".lr.bin");
+    fs::path bin_file = (model_file.stem().string() + ".lr.bin");
     const std::string binary_file = bin_file.string();
 
     std::printf("Writing to '%s' file.\n", binary_file.c_str());

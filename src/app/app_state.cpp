@@ -8,9 +8,9 @@
 
 #include <glm/gtc/epsilon.hpp>
 
-/*static*/ AllKnownShaders AllKnownShaders::BuildKnownShaders()
+/*static*/ Shaders Shaders::Build()
 {
-    VSShader vs_shaders[] =
+    const VSShader vs_shaders[] =
     {
         {&c_vs_basic_phong},
         {&c_vs_gooch_shading},
@@ -18,7 +18,7 @@
         {&c_vs_vertices_only},
         {&c_vs_normals},
     };
-    PSShader ps_shaders[] =
+    const PSShader ps_shaders[] =
     {
         {&c_ps_basic_phong},
         {&c_ps_gooch_shading},
@@ -27,23 +27,51 @@
         {&c_ps_normals},
     };
 
-    AllKnownShaders all;
+    Shaders all;
     all.vs_shaders_.assign(std::begin(vs_shaders), std::end(vs_shaders));
     all.ps_shaders_.assign(std::begin(ps_shaders), std::end(ps_shaders));
     return all;
 }
 
+const VSShader* Shaders::find_vs(const ShaderInfo& info) const
+{
+    Panic(info.kind == ShaderInfo::VS);
+    auto it = std::find_if(vs_shaders_.cbegin(), vs_shaders_.cend()
+        , [&](const VSShader& vs) { return vs.vs_info == &info; });
+    if (it != vs_shaders_.cend())
+    {
+        return &(*it);
+    }
+    return nullptr;
+}
+
+const PSShader* Shaders::find_ps(const ShaderInfo& info) const
+{
+    Panic(info.kind == ShaderInfo::PS);
+    auto it = std::find_if(ps_shaders_.cbegin(), ps_shaders_.cend()
+        , [&](const PSShader& vs) { return vs.ps_info == &info; });
+    if (it != ps_shaders_.cend())
+    {
+        return &(*it);
+    }
+    return nullptr;
+}
+
 void Init_KnownShaders(AppState& app)
 {
-    for (VSShader& vs : app.known_shaders_.vs_shaders_)
+    for (std::size_t index = 0, count = app.all_shaders_.vs_shaders_.size(); index < count; ++index)
     {
+        VSShader& vs = app.all_shaders_.vs_shaders_[index];
         app.compiler_.create_vs(*app.device_.Get(), *vs.vs_info, vs.vs, vs.vs_layout);
-        app.watch_.watch_changes_to(*vs.vs_info);
+        app.watch_.watch_changes_to(*vs.vs_info
+            , reinterpret_cast<const void*>(index));
     }
-    for (PSShader& ps : app.known_shaders_.ps_shaders_)
+    for (std::size_t index = 0, count = app.all_shaders_.ps_shaders_.size(); index < count; ++index)
     {
+        PSShader& ps = app.all_shaders_.ps_shaders_[index];
         app.compiler_.create_ps(*app.device_.Get(), *ps.ps_info, ps.ps);
-        app.watch_.watch_changes_to(*ps.ps_info);
+        app.watch_.watch_changes_to(*ps.ps_info
+            , reinterpret_cast<const void*>(index));
     }
 }
 
@@ -429,9 +457,8 @@ bool TickModelsLoad(AppState& app)
         const Model& model = app.models_[std::size_t(app.imgui_.selected_model_index_)].model;
 
         app.active_model_ = RenderModel::make(*app.device_.Get(), model);
-        SetShadersRef(app.active_model_, app.known_shaders_
-            , *app.known_shaders_.vs_shaders_[app.imgui_.model_vs_index].vs_info
-            , *app.known_shaders_.ps_shaders_[app.imgui_.model_ps_index].ps_info);
+        app.active_model_.vs_shader_ = &app.all_shaders_.vs_shaders_[app.imgui_.model_vs_index];
+        app.active_model_.ps_shader_ = &app.all_shaders_.ps_shaders_[app.imgui_.model_ps_index];
         return true;
     }
     return false;
@@ -439,28 +466,31 @@ bool TickModelsLoad(AppState& app)
 
 void TickShadersChange(AppState& app)
 {
-    if (app.watch_.collect_changes(*app.device_.Get()) <= 0)
+    auto patches = app.watch_.collect_changes(*app.device_.Get());
+    if (patches.empty())
     {
         return;
     }
-    for (VSShader& vs : app.known_shaders_.vs_shaders_)
+    for (ShaderPatch& patch : patches)
     {
-        auto patch = app.watch_.fetch_latest(*vs.vs_info);
-        if (patch.vs_shader)
+        const std::size_t index = reinterpret_cast<std::size_t>(patch.user_data);
+        switch (patch.shader_info->kind)
         {
-            vs.vs = std::move(patch.vs_shader);
-            vs.vs_layout = std::move(patch.vs_layout);
-            Panic(vs.vs);
-            Panic(vs.vs_layout);
+        case ShaderInfo::VS:
+        {
+            Panic(index < app.all_shaders_.vs_shaders_.size());
+            VSShader& shader = app.all_shaders_.vs_shaders_[index];
+            shader.vs = std::move(patch.vs_shader);
+            shader.vs_layout = std::move(patch.vs_layout);
+            break;
         }
-    }
-    for (PSShader& ps : app.known_shaders_.ps_shaders_)
-    {
-        auto patch = app.watch_.fetch_latest(*ps.ps_info);
-        if (patch.ps_shader)
+        case ShaderInfo::PS:
         {
-            ps.ps = std::move(patch.ps_shader);
-            Panic(ps.ps);
+            Panic(index < app.all_shaders_.ps_shaders_.size());
+            PSShader& shader = app.all_shaders_.ps_shaders_[index];
+            shader.ps = std::move(patch.ps_shader);
+            break;
+        }
         }
     }
 }

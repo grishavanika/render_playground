@@ -24,8 +24,8 @@ struct RenderLines
     std::vector<LineVertex> vertices_;
 
     ComPtr<ID3D11Device> device_ = nullptr;
-    VSShader* vs_shader_ = nullptr;
-    PSShader* ps_shader_ = nullptr;
+    const VSShader* vs_shader_ = nullptr;
+    const PSShader* ps_shader_ = nullptr;
     ComPtr<ID3D11Buffer> vertex_buffer_ = nullptr;
     ComPtr<ID3D11Buffer> constant_buffer_ = nullptr;
 

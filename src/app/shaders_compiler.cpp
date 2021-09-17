@@ -109,30 +109,16 @@ ComPtr<ID3DBlob> ShadersCompiler::compile(const ShaderInfo& shader_info
     io_port_ = std::move(*port);
 }
 
-void ShadersWatch::watch_changes_to(const ShaderInfo& shader)
+void ShadersWatch::watch_changes_to(const ShaderInfo& shader, const void* user_data)
 {
-    add_watch(shader, shader.file_name);
+    add_watch(shader, shader.file_name, user_data);
     for (const ShaderInfo::Dependency& dep : shader.dependencies)
     {
-        add_watch(shader, dep.file_name);
+        add_watch(shader, dep.file_name, user_data);
     }
 }
 
-ShadersWatch::ShaderPatch ShadersWatch::fetch_latest(const ShaderInfo& shader)
-{
-    auto it = std::find_if(patches_.begin(), patches_.end()
-        , [&shader](const ShaderPatch& existing)
-    {
-        return (existing.shader_info == &shader);
-    });
-    if (it == patches_.end())
-    {
-        return ShaderPatch{};
-    }
-    return *it;
-}
-
-void ShadersWatch::add_watch(const ShaderInfo& shader, const wchar_t* file)
+void ShadersWatch::add_watch(const ShaderInfo& shader, const wchar_t* file, const void* user_data)
 {
     namespace fs = std::filesystem;
     fs::path path = fs::canonical(file);
@@ -158,30 +144,31 @@ void ShadersWatch::add_watch(const ShaderInfo& shader, const wchar_t* file)
     Panic(dir);
 
     auto file_name = path.filename().wstring();
-    Directory::FileMap* file_map = nullptr;
-    for (Directory::FileMap& fm : dir->files)
+    FileShadersDeps* file_deps = nullptr;
+    for (FileShadersDeps& deps : dir->files)
     {
-        if (fm.file_name != file_name)
+        if (deps.file_name != file_name)
         {
             continue;
         }
-        for (const ShaderInfo* existing_shader : fm.shaders)
+        for (const ShaderState& state : deps.shaders)
         {
-            if (existing_shader == &shader)
+            if (state.info_ == &shader)
             {
                 return;
             }
         }
-        file_map = &fm;
+        file_deps = &deps;
         break;
     }
-    if (!file_map)
+    if (!file_deps)
     {
-        Directory::FileMap fm;
-        fm.file_name = std::move(file_name);
-        file_map = &dir->files.emplace_back(std::move(fm));
+        FileShadersDeps deps;
+        deps.file_name = std::move(file_name);
+        file_deps = &dir->files.emplace_back(std::move(deps));
     }
-    file_map->shaders.push_back(&shader);
+    ShaderState state{.info_ = &shader, .user_data_ = user_data};
+    file_deps->shaders.push_back(state);
 }
 
 /*static*/ auto ShadersWatch::Directory::make(
@@ -215,11 +202,22 @@ ShadersWatch::Directory::~Directory()
     watcher().~DirectoryChanges();
 }
 
-int ShadersWatch::collect_changes(ID3D11Device& device)
+std::vector<ShaderPatch> ShadersWatch::collect_changes(ID3D11Device& device)
 {
-    patches_.clear();
-    std::vector<const ShaderInfo*> shaders;
+    std::vector<ShaderPatch> patches;
 
+    auto add_newest_patch = [&](ShaderPatch new_patch)
+    {
+        auto it = std::remove_if(patches.begin(), patches.end()
+            , [&new_patch](const ShaderPatch& existing)
+        {
+            return (existing.shader_info == new_patch.shader_info);
+        });
+        patches.erase(it, patches.end());
+        patches.push_back(std::move(new_patch));
+    };
+
+    std::vector<ShaderState> shaders;
     std::error_code ec;
     while (std::optional<wi::PortData> data = io_port_.query(ec))
     {
@@ -236,11 +234,11 @@ int ShadersWatch::collect_changes(ID3D11Device& device)
         wi::DirectoryChangesRange changes(dir.buffer, *data);
         for (const wi::DirectoryChange& file_change : changes)
         {
-            for (const Directory::FileMap& fm : dir.files)
+            for (const FileShadersDeps& deps : dir.files)
             {
-                if (fm.file_name == file_change.name)
+                if (deps.file_name == file_change.name)
                 {
-                    shaders.insert(shaders.end(), fm.shaders.begin(), fm.shaders.end());
+                    shaders.insert(shaders.end(), deps.shaders.begin(), deps.shaders.end());
                     break;
                 }
             }
@@ -250,48 +248,51 @@ int ShadersWatch::collect_changes(ID3D11Device& device)
     }
 
     int count = 0;
-    std::sort(shaders.begin(), shaders.end());
-    auto unique_end = std::unique(shaders.begin(), shaders.end());
+    std::sort(shaders.begin(), shaders.end()
+        , [](const ShaderState& lhs, const ShaderState& rhs)
+    {
+        return (lhs.info_ < rhs.info_);
+    });
+    auto unique_end = std::unique(shaders.begin(), shaders.end()
+        , [](const ShaderState& lhs, const ShaderState& rhs)
+    {
+        return (lhs.info_ == rhs.info_);
+    });
     for (auto it = shaders.begin(); it != unique_end; ++it)
     {
-        const ShaderInfo& shader = **it;
+        const ShaderState& shader = *it;
         std::string errors;
-        ComPtr<ID3DBlob> bytecode = compiler_->compile(shader, errors);
+        ComPtr<ID3DBlob> bytecode = compiler_->compile(*shader.info_, errors);
         if (!bytecode)
         {
             continue;
         }
         ShaderPatch patch;
-        patch.shader_info = &shader;
-        if (shader.kind == ShaderInfo::VS)
+        patch.shader_info = shader.info_;
+        patch.user_data = shader.user_data_;
+        switch (shader.info_->kind)
+        {
+        case ShaderInfo::VS:
         {
             compiler_->create_vs(device
-                , shader
+                , *shader.info_
                 , patch.vs_shader
                 , patch.vs_layout
                 , bytecode.Get());
+            break;
         }
-        else if (shader.kind == ShaderInfo::PS)
+        case ShaderInfo::PS:
         {
             compiler_->create_ps(device
-                , shader
+                , *shader.info_
                 , patch.ps_shader
                 , bytecode.Get());
+            break;
+        }
         }
         ++count;
         add_newest_patch(std::move(patch));
     }
-    return count;
+    return patches;
 }
 
-
-void ShadersWatch::add_newest_patch(ShaderPatch new_patch)
-{
-    auto it = std::remove_if(patches_.begin(), patches_.end()
-        , [&new_patch](const ShaderPatch& existing)
-    {
-        return (existing.shader_info == new_patch.shader_info);
-    });
-    patches_.erase(it, patches_.end());
-    patches_.push_back(std::move(new_patch));
-}

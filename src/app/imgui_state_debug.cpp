@@ -64,8 +64,8 @@ void ImGui_TweaksInput(ImGuiState& imgui)
     ImGui::SameLine();
     (void)ImGui::Checkbox("Show model", &imgui.show_model);
 
-    (void)ImGui::Checkbox("Enable camera rotation (M)", &imgui.enable_camera_rotation);
-    (void)ImGui::Checkbox("Enable model rotation", &imgui.enable_model_rotation);
+    (void)ImGui::Checkbox("Mouse movements (press M)", &imgui.enable_camera_rotation);
+    (void)ImGui::Checkbox("Model rotation (with mouse middle button)", &imgui.enable_model_rotation);
 
     imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
     (void)ImGui::Checkbox("Show zero world space (red = x, green = y, blue = z)", &imgui.show_zero_world_space);
@@ -74,7 +74,6 @@ void ImGui_TweaksInput(ImGuiState& imgui)
     ImGui::Combo("Light mode", reinterpret_cast<int*>(&imgui.light_mode), items, IM_ARRAYSIZE(items));
     (void)ImGui::SliderFloat("Light move radius", &imgui.light_move_radius, 0.01f, 32.0f);
 
-    (void)ImGui::SliderFloat("Light power", &imgui.light_power, 0.0f, 32.0f);
     (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
     (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 8.f);
 
@@ -84,33 +83,33 @@ void ImGui_TweaksInput(ImGuiState& imgui)
     (void)ImGui::Checkbox("ImGui Demo", &imgui.show_demo_window);
 }
 
-void ImGui_ModelInput(ImGuiState& imgui)
+void ImGui_ShadersInput(ImGuiState& imgui)
 {
-    SCOPE_EXIT{ImGui::End(); };
-    if (!ImGui::Begin("Model", &imgui.show))
+    SCOPE_EXIT{ImGui::End();};
+    if (!ImGui::Begin("Shaders", &imgui.show))
     {
         return;
     }
 
     int used_vs_now = 0;
     int used_ps_now = 0;
-    AllKnownShaders& known_shaders = imgui.app_->known_shaders_;
+    Shaders& shaders = imgui.app_->all_shaders_;
     RenderModel& active_model = imgui.app_->active_model_;
 
     ImGui::PushID("Vertex shaders");
     ImGui::BeginGroup();
-    for (int index = 0, count = int(known_shaders.vs_shaders_.size()); index < count; ++index)
+    for (int index = 0, count = int(shaders.vs_shaders_.size()); index < count; ++index)
     {
-        const VSShader& vs = known_shaders.vs_shaders_[std::size_t(index)];
+        const VSShader& vs = shaders.vs_shaders_[std::size_t(index)];
         if (&vs == active_model.vs_shader_)
         {
             used_vs_now = index;
             break;
         }
     }
-    for (int index = 0, count = int(known_shaders.vs_shaders_.size()); index < count; ++index)
+    for (int index = 0, count = int(shaders.vs_shaders_.size()); index < count; ++index)
     {
-        const VSShader& vs = known_shaders.vs_shaders_[std::size_t(index)];
+        const VSShader& vs = shaders.vs_shaders_[std::size_t(index)];
         if (used_vs_now == index)
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0.f, 1.f));
@@ -126,18 +125,18 @@ void ImGui_ModelInput(ImGuiState& imgui)
     ImGui::PushID("Pixel shaders");
     ImGui::SameLine();
     ImGui::BeginGroup();
-    for (int index = 0, count = int(known_shaders.ps_shaders_.size()); index < count; ++index)
+    for (int index = 0, count = int(shaders.ps_shaders_.size()); index < count; ++index)
     {
-        const PSShader& ps = known_shaders.ps_shaders_[std::size_t(index)];
+        const PSShader& ps = shaders.ps_shaders_[std::size_t(index)];
         if (&ps == active_model.ps_shader_)
         {
             used_ps_now = index;
             break;
         }
     }
-    for (int index = 0, count = int(known_shaders.ps_shaders_.size()); index < count; ++index)
+    for (int index = 0, count = int(shaders.ps_shaders_.size()); index < count; ++index)
     {
-        const PSShader& ps = known_shaders.ps_shaders_[std::size_t(index)];
+        const PSShader& ps = shaders.ps_shaders_[std::size_t(index)];
         if (used_ps_now == index)
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0.f, 1.f));
@@ -159,11 +158,11 @@ void ImGui_ModelInput(ImGuiState& imgui)
         {
             if (used_vs_now != imgui.model_vs_index)
             {
-                active_model.vs_shader_ = &known_shaders.vs_shaders_[imgui.model_vs_index];
+                active_model.vs_shader_ = &shaders.vs_shaders_[imgui.model_vs_index];
             }
             if (used_ps_now != imgui.model_ps_index)
             {
-                active_model.ps_shader_ = &known_shaders.ps_shaders_[imgui.model_ps_index];
+                active_model.ps_shader_ = &shaders.ps_shaders_[imgui.model_ps_index];
             }
         }
         if (ImGui::Button("Reset"))
@@ -187,5 +186,5 @@ void TickImGui(AppState& app)
     }
 
     ImGui_TweaksInput(app.imgui_);
-    ImGui_ModelInput(app.imgui_);
+    ImGui_ShadersInput(app.imgui_);
 }

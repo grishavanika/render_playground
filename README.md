@@ -1,9 +1,13 @@
 ### Run
 
 ```
-# Convert raw .obj into internal format.
-lr_export.exe assets\_package assets\skull\skull.obj
-# Load assets\_package\skull.lr.bin model.
+# Build "export" project. This gives lr_export.exe.
+# Bake .obj file into *.lr.bin (internal format) with:
+
+lr_export.exe assets\skull\skull.obj
+
+# This puts "skull.lr.bin" to folder where lr_export.exe was run.
+# Drag&drop "skull.lr.bin" to App window.
 ```
 
 ### Sample

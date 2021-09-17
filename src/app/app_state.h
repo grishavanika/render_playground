@@ -10,7 +10,6 @@
 #include <vector>
 
 struct AppState;
-struct AllKnownShaders;
 
 void Init_MessageHandling(AppState& app);
 void Init_KnownShaders(AppState& app);
@@ -19,16 +18,15 @@ void TickInput(AppState& app);
 bool TickModelsLoad(AppState& app);
 void TickShadersChange(AppState& app);
 
-template<typename RenderObject>
-void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
-    , const ShaderInfo& vs, const ShaderInfo& ps);
-
-struct AllKnownShaders
+struct Shaders
 {
+    static Shaders Build();
+
+    const VSShader* find_vs(const ShaderInfo& info) const;
+    const PSShader* find_ps(const ShaderInfo& info) const;
+
     std::vector<VSShader> vs_shaders_;
     std::vector<PSShader> ps_shaders_;
-
-    static AllKnownShaders BuildKnownShaders();
 };
 
 struct AppState
@@ -36,7 +34,7 @@ struct AppState
     StubWindow window_;
     ShadersCompiler compiler_;
     ShadersWatch watch_;
-    AllKnownShaders known_shaders_;
+    Shaders all_shaders_;
     RenderModel active_model_;
     ImGuiState imgui_;
 
@@ -72,28 +70,3 @@ struct AppState
     std::vector<FileModel> models_;
     int active_model_index_ = -1;
 };
-
-template<typename RenderObject>
-void SetShadersRef(RenderObject& o, AllKnownShaders& all_shaders
-    , const ShaderInfo& vs, const ShaderInfo& ps)
-{
-    for (VSShader& shader : all_shaders.vs_shaders_)
-    {
-        if (shader.vs_info == &vs)
-        {
-            o.vs_shader_ = &shader;
-            break;
-        }
-    }
-    for (PSShader& shader : all_shaders.ps_shaders_)
-    {
-        if (shader.ps_info == &ps)
-        {
-            o.ps_shader_ = &shader;
-            break;
-        }
-    }
-
-    Panic(o.vs_shader_);
-    Panic(o.ps_shader_);
-}
