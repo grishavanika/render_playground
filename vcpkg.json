@@ -1,6 +1,8 @@
 {
   "dependencies": [
+    "assimp",
     "glm",
-    "assimp"
+    "stb",
+    "outcome"
   ]
 }

@@ -1,4 +1,6 @@
 #pragma once
+#undef min
+#undef max
 #include <outcome.hpp>
 namespace outcome = OUTCOME_V2_NAMESPACE;
 
