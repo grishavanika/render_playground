@@ -4,9 +4,6 @@
 [submodule "third_party/deps/assimp-src"]
 	path = third_party/deps/assimp-src
 	url = https://github.com/assimp/assimp.git
-[submodule "third_party/deps/scope_guard-src"]
-	path = third_party/deps/scope_guard-src
-	url = https://github.com/grishavanika/folly_scope_guard.git
 [submodule "third_party/deps/outcome-src"]
 	path = third_party/deps/outcome-src
 	url = https://github.com/ned14/outcome.git

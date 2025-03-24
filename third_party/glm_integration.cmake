@@ -16,5 +16,8 @@ if (MSVC)
         )
 endif ()
 
+target_compile_definitions(glm_Interface
+  INTERFACE GLM_ENABLE_EXPERIMENTAL)
+
 add_subdirectory(${glm_content_SOURCE_DIR} ${glm_content_BINARY_DIR} EXCLUDE_FROM_ALL)
 target_link_libraries(glm_Interface INTERFACE glm)
