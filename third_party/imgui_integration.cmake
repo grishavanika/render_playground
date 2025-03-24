@@ -3,13 +3,12 @@
 include(FetchContent)
 
 FetchContent_Declare(
-	imgui
-	SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui-src"
-	FULLY_DISCONNECTED ON)
-FetchContent_GetProperties(imgui)
-if (NOT imgui_POPULATED)
-	FetchContent_Populate(imgui)
-endif ()
+  imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG        7674cbc9b25668dcbcc0ffd35b126b094c978e89
+)
+
+FetchContent_MakeAvailable(imgui)
 
 add_library(ImGui_Core
 	${imgui_SOURCE_DIR}/imconfig.h
@@ -19,7 +18,7 @@ add_library(ImGui_Core
 	${imgui_SOURCE_DIR}/imgui_demo.cpp
 	${imgui_SOURCE_DIR}/imgui_draw.cpp
 	${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp)
+	${imgui_SOURCE_DIR}/imgui_tables.cpp)
 
 target_include_directories(ImGui_Core PUBLIC ${imgui_SOURCE_DIR})
 target_include_directories(ImGui_Core PUBLIC ${imgui_SOURCE_DIR}/backends)

@@ -219,18 +219,18 @@ std::vector<ShaderPatch> ShadersWatch::collect_changes(ID3D11Device& device)
 
     std::vector<ShaderState> shaders;
     std::error_code ec;
-    while (std::optional<wi::PortData> data = io_port_.query(ec))
+    while (std::optional<wi::PortEntry> data = io_port_.query(ec))
     {
         Panic(!ec);
         if (!data)
         {
             continue;
         }
-        if (data->key >= wi::WinULONG_PTR(dirs_.size()))
+        if (data->completion_key >= wi::WinULONG_PTR(dirs_.size()))
         {
             continue;
         }
-        Directory& dir = *dirs_[std::size_t(data->key)];
+        Directory& dir = *dirs_[std::size_t(data->completion_key)];
         wi::DirectoryChangesRange changes(dir.buffer, *data);
         for (const wi::DirectoryChange& file_change : changes)
         {

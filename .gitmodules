@@ -1,6 +1,0 @@
-[submodule "third_party/deps/imgui-src"]
-	path = third_party/deps/imgui-src
-	url = https://github.com/ocornut/imgui.git
-[submodule "third_party/deps/win_io-src"]
-	path = third_party/deps/win_io-src
-	url = https://github.com/grishavanika/win_io.git
