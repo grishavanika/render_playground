@@ -1,7 +1,0 @@
-include(dx11_integration.cmake)
-include(imgui_integration.cmake)
-include(stb_image_integration.cmake)
-include(assimp_integration.cmake)
-include(outcome_integration.cmake)
-include(win_io_integration.cmake)
-include(glm_integration.cmake)
