@@ -1,10 +1,10 @@
 #pragma once
-#include <span>
-#include <string>
 #include <functional>
 #include <memory>
-#include <vector>
+#include <span>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 #include "dx_api.h"
 
@@ -14,7 +14,11 @@
 
 struct ShaderInfo
 {
-    enum Kind { VS, PS };
+    enum Kind
+    {
+        VS,
+        PS
+    };
 
     struct Dependency
     {
@@ -64,19 +68,22 @@ static void PanicShadersValid(const VSShader* vs_shader, const PSShader* ps_shad
 
 struct ShadersCompiler
 {
-    void create_vs(ID3D11Device& device
-        , const ShaderInfo& vs
-        , ComPtr<ID3D11VertexShader>& vs_shader
-        , ComPtr<ID3D11InputLayout>& vs_layout
-        , ID3DBlob* bytecode = nullptr);
+    void create_vs(
+        ID3D11Device& device,
+        const ShaderInfo& vs,
+        ComPtr<ID3D11VertexShader>& vs_shader,
+        ComPtr<ID3D11InputLayout>& vs_layout,
+        ID3DBlob* bytecode = nullptr
+    );
 
-    void create_ps(ID3D11Device& device
-        , const ShaderInfo& ps
-        , ComPtr<ID3D11PixelShader>& ps_shader
-        , ID3DBlob* bytecode = nullptr);
+    void create_ps(
+        ID3D11Device& device,
+        const ShaderInfo& ps,
+        ComPtr<ID3D11PixelShader>& ps_shader,
+        ID3DBlob* bytecode = nullptr
+    );
 
-    ComPtr<ID3DBlob> compile(const ShaderInfo& shader_info
-        , std::string& error_text);
+    ComPtr<ID3DBlob> compile(const ShaderInfo& shader_info, std::string& error_text);
 };
 
 struct ShaderPatch
@@ -101,7 +108,7 @@ private:
     void add_watch(const ShaderInfo& shader, const wchar_t* file, const void* user_data);
 
 private:
-    template<typename T>
+    template <typename T>
     using BufferFor = std::aligned_storage_t<sizeof(T), alignof(T)>;
     struct Directory;
 
@@ -130,20 +137,23 @@ private:
         BufferFor<wi::DirectoryChanges> watcher_data;
 
         static std::unique_ptr<Directory> make(
-            std::wstring directory_path
-            , wi::IoCompletionPort& io_port
-            , wi::WinULONG_PTR key);
+            std::wstring directory_path,
+            wi::IoCompletionPort& io_port,
+            wi::WinULONG_PTR key
+        );
 
         wi::DirectoryChanges& watcher()
-        { return *reinterpret_cast<wi::DirectoryChanges*>(&watcher_data); }
+        {
+            return *reinterpret_cast<wi::DirectoryChanges*>(&watcher_data);
+        }
 
         ~Directory();
         Directory(const Directory&) = delete;
         Directory(Directory&&) = delete;
         Directory& operator=(const Directory&) = delete;
         Directory& operator=(Directory&&) = delete;
+
     private:
         Directory() = default;
     };
 };
-

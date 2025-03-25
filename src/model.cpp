@@ -1,8 +1,8 @@
 #include "model.h"
 #include "assimp_model.h"
 
-#include <cstdio>
 #include <cassert>
+#include <cstdio>
 
 static void Panic(bool condition)
 {
@@ -48,8 +48,7 @@ Mesh Model::get_mesh(std::uint32_t index) const
     Panic(index < assimp_->meshes.size());
     const AssimpMesh& assimp_mesh = assimp_->meshes[index];
 
-    auto get_texture_id = [&](const std::string& path)
-    {
+    auto get_texture_id = [&](const std::string& path) {
         for (std::uint32_t i = 0, count = std::uint32_t(assimp_->materials.size()); i < count; ++i)
         {
             if (assimp_->materials[i].path == path)
@@ -78,7 +77,7 @@ Texture Model::get_texture(std::uint32_t index) const
     texture.id = index;
     texture.height = assimp_texture.height;
     texture.width = assimp_texture.width;
-    texture.data = { assimp_texture.data, assimp_texture.data + size };
+    texture.data = {assimp_texture.data, assimp_texture.data + size};
     return texture;
 }
 

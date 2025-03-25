@@ -11,8 +11,10 @@ struct VerticesVSConstantBuffer
     glm::mat4x4 projection;
 };
 
-/*static*/ RenderVertices RenderVertices::make(const ComPtr<ID3D11Device>& device
-    , const std::span<const glm::vec3>& vertices)
+/*static*/ RenderVertices RenderVertices::make(
+    const ComPtr<ID3D11Device>& device,
+    const std::span<const glm::vec3>& vertices
+)
 {
     RenderVertices render{};
     render.device_ = device;
@@ -39,9 +41,8 @@ struct VerticesVSConstantBuffer
     return render;
 }
 
-void RenderVertices::render(ID3D11DeviceContext& device_context
-    , const glm::mat4x4& view
-    , const glm::mat4x4& projection) const
+void RenderVertices::render(ID3D11DeviceContext& device_context, const glm::mat4x4& view, const glm::mat4x4& projection)
+    const
 {
     if (vertices_.empty())
     {

@@ -1,8 +1,8 @@
 #pragma once
 #include <algorithm>
 
-#include <cstdlib>
 #include <cassert>
+#include <cstdlib>
 
 inline void Panic(bool condition)
 {

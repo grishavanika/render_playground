@@ -8,5 +8,5 @@ namespace outcome = OUTCOME_V2_NAMESPACE;
 
 namespace todo
 {
-    constexpr std::errc not_implemented = std::errc::not_supported;
+constexpr std::errc not_implemented = std::errc::not_supported;
 } // namespace todo

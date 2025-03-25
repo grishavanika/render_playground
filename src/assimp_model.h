@@ -1,9 +1,9 @@
 #pragma once
-#include <string>
-#include <vector>
+#include "model.h"
 #include <filesystem>
 #include <glm/vec3.hpp>
-#include "model.h"
+#include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -31,7 +31,7 @@ struct AssimpModel
 {
     struct Blob
     {
-        std::string path; // not exported
+        std::string path;    // not exported
         unsigned char* data; // stbi_image_free(data)
         unsigned int width;
         unsigned int height;
@@ -41,4 +41,3 @@ struct AssimpModel
     glm::vec3 aabb_min;
     glm::vec3 aabb_max;
 };
-

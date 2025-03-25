@@ -1,25 +1,25 @@
 #pragma once
+#include "utils.h"
 #include <Windows.h>
 #include <functional>
 #include <unordered_map>
-#include "utils.h"
 
 class StubWindow
 {
 public:
     explicit StubWindow()
-        : class_name_(nullptr)
-        , wnd_handler_()
-        , handlers_()
-        , wnd_(nullptr)
+        : class_name_(nullptr),
+          wnd_handler_(),
+          handlers_(),
+          wnd_(nullptr)
     {
     }
 
     explicit StubWindow(const char* class_name)
-        : class_name_(class_name)
-        , wnd_handler_()
-        , handlers_()
-        , wnd_(create())
+        : class_name_(class_name),
+          wnd_handler_(),
+          handlers_(),
+          wnd_(create())
     {
     }
 
@@ -32,10 +32,10 @@ public:
     StubWindow& operator=(const StubWindow& rhs) = delete;
 
     StubWindow(StubWindow&& rhs) noexcept
-        : class_name_(std::exchange(rhs.class_name_, nullptr))
-        , wnd_handler_(std::move(rhs.wnd_handler_))
-        , handlers_(std::move(rhs.handlers_))
-        , wnd_(std::exchange(rhs.wnd_, nullptr))
+        : class_name_(std::exchange(rhs.class_name_, nullptr)),
+          wnd_handler_(std::move(rhs.wnd_handler_)),
+          handlers_(std::move(rhs.handlers_)),
+          wnd_(std::exchange(rhs.wnd_, nullptr))
     {
         if (wnd_)
         {
@@ -66,8 +66,7 @@ public:
         return wnd_;
     }
 
-    using MessageCallback = std::function<LRESULT
-        (HWND /*hwnd*/, UINT /*msg*/, WPARAM /*wparam*/, LPARAM /*lparam*/)>;
+    using MessageCallback = std::function<LRESULT(HWND /*hwnd*/, UINT /*msg*/, WPARAM /*wparam*/, LPARAM /*lparam*/)>;
 
     void on_message(UINT msg, MessageCallback handler)
     {
@@ -83,8 +82,7 @@ public:
 private:
     LRESULT on_wnd_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
-        if (wnd_handler_
-            && (wnd_handler_(hwnd, msg, wparam, lparam) == TRUE))
+        if (wnd_handler_ && (wnd_handler_(hwnd, msg, wparam, lparam) == TRUE))
         {
             return TRUE;
         }
@@ -101,15 +99,14 @@ private:
     HWND create()
     {
         HINSTANCE app_handle = ::GetModuleHandle(nullptr);
-        auto register_wnd_class = [&]
-        {
+        auto register_wnd_class = [&] {
             WNDCLASSEXA wcx{};
             wcx.cbSize = sizeof(wcx);
             wcx.style = CS_HREDRAW | CS_VREDRAW;
             wcx.lpfnWndProc = &WndProc;
             wcx.hInstance = app_handle;
-            wcx.hIcon = ::LoadIcon(nullptr/*standard icon*/, IDI_APPLICATION);
-            wcx.hCursor = ::LoadCursor(nullptr/*standard cursor*/, IDC_ARROW);
+            wcx.hIcon = ::LoadIcon(nullptr /*standard icon*/, IDI_APPLICATION);
+            wcx.hCursor = ::LoadCursor(nullptr /*standard cursor*/, IDC_ARROW);
             wcx.hbrBackground = reinterpret_cast<HBRUSH>(::GetStockObject(WHITE_BRUSH));
             wcx.lpszClassName = class_name_;
             wcx.hIconSm = nullptr;
@@ -117,8 +114,7 @@ private:
             return ::RegisterClassExA(&wcx);
         };
 
-        auto create_window = [&]
-        {
+        auto create_window = [&] {
             HWND hwnd = ::CreateWindowA(
                 class_name_,
                 "",
@@ -130,7 +126,8 @@ private:
                 nullptr, // no parent wnd
                 nullptr, // no menu
                 app_handle,
-                this); // to be passed to WndProc
+                this
+            ); // to be passed to WndProc
             return hwnd;
         };
 
@@ -148,8 +145,8 @@ private:
             return;
         }
 
-        const StubWindow* self = reinterpret_cast<const StubWindow*>(
-            ::SetWindowLongPtr(wnd_, GWLP_USERDATA, LONG_PTR(0)));
+        const StubWindow* self =
+            reinterpret_cast<const StubWindow*>(::SetWindowLongPtr(wnd_, GWLP_USERDATA, LONG_PTR(0)));
         BOOL ok = ::DestroyWindow(wnd_);
         // We may fail to destroy because windows is already destroyed
         // by the user. Otherwise, on success, be sure we owned this window.
@@ -176,8 +173,7 @@ private:
         // Function failure will be indicated by a return value
         // of zero and a GetLastError result that is nonzero.
         ::SetLastError(0);
-        if ((::SetWindowLongPtr(hwnd, GWLP_USERDATA, LONG_PTR(self)) == LONG_PTR(prev))
-            && (::GetLastError() != 0))
+        if ((::SetWindowLongPtr(hwnd, GWLP_USERDATA, LONG_PTR(self)) == LONG_PTR(prev)) && (::GetLastError() != 0))
         {
             return false;
         }
@@ -188,15 +184,15 @@ private:
     {
         if (msg == WM_NCCREATE)
         {
-             const CREATESTRUCT* cs = reinterpret_cast<const CREATESTRUCT*>(lparam);
-             Panic(cs && cs->lpCreateParams);
-             StubWindow* self = static_cast<StubWindow*>(cs->lpCreateParams);
-             if (ChangeWndPtr(hwnd, self))
-             {
-                 return TRUE;
-             }
-             // Can't set the data. Fail ::CreateWindow() call.
-             return FALSE;
+            const CREATESTRUCT* cs = reinterpret_cast<const CREATESTRUCT*>(lparam);
+            Panic(cs && cs->lpCreateParams);
+            StubWindow* self = static_cast<StubWindow*>(cs->lpCreateParams);
+            if (ChangeWndPtr(hwnd, self))
+            {
+                return TRUE;
+            }
+            // Can't set the data. Fail ::CreateWindow() call.
+            return FALSE;
         }
 
         StubWindow* self = reinterpret_cast<StubWindow*>(::GetWindowLongPtr(hwnd, GWLP_USERDATA));

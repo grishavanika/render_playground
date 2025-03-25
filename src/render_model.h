@@ -1,12 +1,12 @@
 #pragma once
 #include "dx_api.h"
-#include "utils.h"
 #include "model.h"
 #include "shaders_compiler.h"
+#include "utils.h"
 
+#include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
 
 #include <vector>
 
@@ -76,7 +76,5 @@ struct RenderModel
 
     static RenderModel make(ID3D11Device& device, const Model& model);
 
-    void render(ID3D11DeviceContext& device_context
-        , const glm::mat4x4& view
-        , const glm::mat4x4& projection) const;
+    void render(ID3D11DeviceContext& device_context, const glm::mat4x4& view, const glm::mat4x4& projection) const;
 };

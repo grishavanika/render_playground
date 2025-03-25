@@ -1,10 +1,10 @@
 #pragma once
-#include "utils.h"
 #include "imgui.h"
+#include "utils.h"
 
-#include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 
 #include <vector>
 

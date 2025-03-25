@@ -9,8 +9,10 @@ struct NormalsVSConstantBuffer
     glm::mat4x4 projection;
 };
 
-/*static*/ RenderWithNormals RenderWithNormals::make(const ComPtr<ID3D11Device>& device
-    , const std::span<const NormalsVertex>& vertices)
+/*static*/ RenderWithNormals RenderWithNormals::make(
+    const ComPtr<ID3D11Device>& device,
+    const std::span<const NormalsVertex>& vertices
+)
 {
     RenderWithNormals render{};
     render.device_ = device;
@@ -37,9 +39,11 @@ struct NormalsVSConstantBuffer
     return render;
 }
 
-void RenderWithNormals::render(ID3D11DeviceContext& device_context
-    , const glm::mat4x4& view
-    , const glm::mat4x4& projection) const
+void RenderWithNormals::render(
+    ID3D11DeviceContext& device_context,
+    const glm::mat4x4& view,
+    const glm::mat4x4& projection
+) const
 {
     if (vertices_.empty())
     {

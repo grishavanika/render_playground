@@ -39,15 +39,13 @@ struct LineVSConstantBuffer
     return render;
 }
 
-void RenderLines::add_line(const glm::vec3& p0, const glm::vec3& p1
-    , const glm::vec3& color /*= glm::vec3(1.f)*/)
+void RenderLines::add_line(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& color /*= glm::vec3(1.f)*/)
 {
     const glm::vec3 points[2] = {p0, p1};
     add_lines(points, color);
 }
 
-void RenderLines::add_bb(const glm::vec3& min, const glm::vec3& max
-    , const glm::vec3& color /*= glm::vec3(1.f)*/)
+void RenderLines::add_bb(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color /*= glm::vec3(1.f)*/)
 {
     glm::vec3 corners[8];
     corners[0].x = min.x;
@@ -75,12 +73,7 @@ void RenderLines::add_bb(const glm::vec3& min, const glm::vec3& max
     corners[7].y = min.y;
     corners[7].z = max.z;
 
-    const int indices[] =
-    {
-        0, 1, 1, 2, 2, 3, 3, 0,
-        3, 5, 5, 4, 4, 0, 4, 7,
-        7, 6, 6, 5, 6, 2, 7, 1
-    };
+    const int indices[] = {0, 1, 1, 2, 2, 3, 3, 0, 3, 5, 5, 4, 4, 0, 4, 7, 7, 6, 6, 5, 6, 2, 7, 1};
 
     glm::vec3 points[std::size(indices)];
     for (std::size_t i = 0; i < std::size(indices); ++i)
@@ -96,8 +89,7 @@ void RenderLines::clear()
     vertices_.clear();
 }
 
-void RenderLines::add_lines(const std::span<const glm::vec3>& points
-    , const glm::vec3& color /*= glm::vec3(1.f)*/)
+void RenderLines::add_lines(const std::span<const glm::vec3>& points, const glm::vec3& color /*= glm::vec3(1.f)*/)
 {
     Panic(!points.empty());
     Panic((points.size() % 2) == 0);
@@ -115,18 +107,17 @@ void RenderLines::add_lines(const std::span<const glm::vec3>& points
         vertex_buffer_.Reset();
         D3D11_BUFFER_DESC desc{};
         // Create vertex buffer.
-        desc.ByteWidth      = UINT(vertices_.capacity() * sizeof(LineVertex));
-        desc.Usage          = D3D11_USAGE_DYNAMIC;
-        desc.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
+        desc.ByteWidth = UINT(vertices_.capacity() * sizeof(LineVertex));
+        desc.Usage = D3D11_USAGE_DYNAMIC;
+        desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         HRESULT hr = device_->CreateBuffer(&desc, 0, &vertex_buffer_);
         Panic(SUCCEEDED(hr));
     }
 }
 
-void RenderLines::render(ID3D11DeviceContext& device_context
-    , const glm::mat4x4& view
-    , const glm::mat4x4& projection) const
+void RenderLines::render(ID3D11DeviceContext& device_context, const glm::mat4x4& view, const glm::mat4x4& projection)
+    const
 {
     if (vertices_.empty())
     {

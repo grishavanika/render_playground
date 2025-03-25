@@ -1,14 +1,14 @@
 #pragma once
 #include "dx_api.h"
-#include "utils.h"
 #include "shaders_compiler.h"
+#include "utils.h"
 #include "vertex.h"
 
-#include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 
-#include <vector>
 #include <span>
+#include <vector>
 
 // Mostly from:
 // https://github.com/GPUOpen-LibrariesAndSDKs/GPUParticles11/blob/master/amd_sdk/src/LineRender.h
@@ -33,16 +33,11 @@ struct RenderLines
 
     static RenderLines make(const ComPtr<ID3D11Device>& device);
 
-    void add_line(const glm::vec3& p0, const glm::vec3& p1
-        , const glm::vec3& color = glm::vec3(1.f));
-    void add_lines(const std::span<const glm::vec3>& points
-        , const glm::vec3& color = glm::vec3(1.f));
-    void add_bb(const glm::vec3& min, const glm::vec3& max
-        , const glm::vec3& color = glm::vec3(1.f));
+    void add_line(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& color = glm::vec3(1.f));
+    void add_lines(const std::span<const glm::vec3>& points, const glm::vec3& color = glm::vec3(1.f));
+    void add_bb(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color = glm::vec3(1.f));
 
     void clear();
 
-    void render(ID3D11DeviceContext& device_context
-        , const glm::mat4x4& view
-        , const glm::mat4x4& projection) const;
+    void render(ID3D11DeviceContext& device_context, const glm::mat4x4& view, const glm::mat4x4& projection) const;
 };

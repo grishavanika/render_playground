@@ -135,20 +135,17 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
 
     for (std::uint32_t i = 0; i < model.meshes_count(); ++i)
     {
-        render.meshes.push_back(RenderMesh::make(
-            device, model.get_mesh(i)));
+        render.meshes.push_back(RenderMesh::make(device, model.get_mesh(i)));
     }
     for (std::uint32_t i = 0; i < model.textures_count(); ++i)
     {
-        render.textures.push_back(RenderTexture::make(
-            device, model.get_texture(i)));
+        render.textures.push_back(RenderTexture::make(device, model.get_texture(i)));
     }
     return render;
 }
 
-void RenderModel::render(ID3D11DeviceContext& device_context
-    , const glm::mat4x4& view
-    , const glm::mat4x4& projection) const
+void RenderModel::render(ID3D11DeviceContext& device_context, const glm::mat4x4& view, const glm::mat4x4& projection)
+    const
 {
 #if (0)
     PanicShadersValid(vs_shader_, ps_shader_);
@@ -162,9 +159,9 @@ void RenderModel::render(ID3D11DeviceContext& device_context
 
     // Put a flag that there is actually no needed textures
     // (decide by looking at fist mesh; they all the same).
-    const bool has_texture = (meshes.size() > 0)
-        && GetTexture(*this, meshes[0].ps_texture_diffuse)
-        && GetTexture(*this, meshes[0].ps_texture_normal);
+    const bool has_texture = (meshes.size() > 0)                                //
+                             && GetTexture(*this, meshes[0].ps_texture_diffuse) //
+                             && GetTexture(*this, meshes[0].ps_texture_normal);
 
     // Parameters for PS.
     PSConstantBuffer0 ps_cb0;

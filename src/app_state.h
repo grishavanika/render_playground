@@ -1,12 +1,12 @@
 #pragma once
 #include "dx_api.h"
-#include "stub_window.h"
 #include "imgui_state_debug.h"
-#include "shaders_compiler.h"
 #include "render_model.h"
+#include "shaders_compiler.h"
+#include "stub_window.h"
 
-#include <unordered_set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 struct AppState;
