@@ -38,6 +38,20 @@
 
 int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTSTR /*lpCmdLine*/, int /*nCmdShow*/)
 {
+#if (0)
+    {
+        Panic(::AllocConsole());
+        FILE* unused = nullptr;
+        Panic(0 == freopen_s(&unused, "CONOUT$", "w", stdout));
+        Panic(0 == freopen_s(&unused, "CONOUT$", "w", stderr));
+        Panic(0 == freopen_s(&unused, "CONIN$", "r", stdin));
+        std::cout.clear(); // to reset badbit/failbit
+        std::clog.clear();
+        std::cerr.clear();
+        std::cin.clear();
+    }
+#endif
+
     AppState app;
     app.window_ = StubWindow("xxx_lr");
     app.watch_ = ShadersWatch(app.compiler_);
@@ -65,15 +79,6 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
     const UINT client_height = (client_rect.bottom - client_rect.top);
     app.window_width_ = float(client_width);
     app.window_height_ = float(client_height);
-
-    { // Calculate default camera orientation from initial angles.
-        const float x = cosf(app.camera_yaw_) * cosf(app.camera_pitch_);
-        const float y = sinf(app.camera_pitch_);
-        const float z = sinf(app.camera_yaw_) * cosf(app.camera_pitch_);
-
-        app.camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
-        app.camera_right_dir_ = glm::normalize(glm::cross(app.camera_front_dir_, app.camera_up_dir_));
-    }
 
     // Device initialization.
     DXGI_SWAP_CHAIN_DESC sc_desc{};
@@ -217,18 +222,17 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
             app.fov_y_,
             app.window_width_,
             app.window_height_,
-            0.01f // NearZ
-            ,
+            0.01f, // NearZ
             10000.0f
         ); // FarZ
         const float t = float(::GetTickCount() - start_time) / 1000.f;
 
-        view = glm::lookAtLH(app.camera_position_, app.camera_position_ + app.camera_front_dir_, app.camera_up_dir_);
+        view = app.camera_.view();
 
-        app.active_model_.world = glm::mat4x4(1.f) * app.imgui_.get_model_scale() * app.model_rotation_;
+        app.active_model_.world = glm::mat4x4(1.f) * app.imgui_.get_model_scale() * glm::mat4x4(1.f);
         render_bb.world = app.active_model_.world;
         app.active_model_.light_color = app.imgui_.light_color;
-        app.active_model_.viewer_position = app.camera_position_;
+        app.active_model_.viewer_position = app.camera_.camera_position_;
 
         switch (app.imgui_.light_mode)
         {
@@ -242,7 +246,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         case LightMode::Moving_Paused:
             break;
         case LightMode::Static_AtCameraPosition:
-            app.active_model_.light_position = app.camera_position_;
+            app.active_model_.light_position = app.camera_.camera_position_;
             break;
         }
 

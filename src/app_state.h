@@ -29,6 +29,22 @@ struct Shaders
     std::vector<PSShader> ps_shaders_;
 };
 
+struct Camera
+{
+    Camera();
+
+    glm::vec3 camera_position_ = glm::vec3(0.0f, 0.0f, -3.0f);
+    glm::vec3 camera_up_dir_ = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 camera_front_dir_ = glm::vec3(0.0f, 0.0f, 1.0f);
+    float camera_yaw_ = glm::radians(90.f);  // [-180; 180]
+    float camera_pitch_ = glm::radians(0.f); // [-90; 90]
+
+    glm::mat4x4 view() const;
+    glm::vec3 right_dir() const;
+
+    void update(int x_delta, int y_delta);
+};
+
 struct AppState
 {
     StubWindow window_;
@@ -37,27 +53,17 @@ struct AppState
     Shaders all_shaders_;
     RenderModel active_model_;
     ImGuiState imgui_;
-
-    glm::mat4x4 model_rotation_ = glm::mat4x4(1.f);
-    bool is_model_rotation_active_ = false;
+    Camera camera_;
+    bool update_camera_ = false;
 
     float fov_y_ = glm::radians(45.f);
+    float mouse_scroll_sensitivity_ = 0.05f;
+
     float window_width_ = 0.f;
     float window_height_ = 0.f;
-    float mouse_scroll_sensitivity_ = 0.05f;
-    float camera_yaw_ = glm::radians(90.f);  // [-180; 180]
-    float camera_pitch_ = glm::radians(0.f); // [-90; 90]
-    float camera_rotation_sensitivity_ = 0.05f;
-    float model_rotation_sensitivity_ = 0.25f;
-    float camera_move_XZ_speed_ = 0.1f;
-    float camera_move_Y_speed_ = 0.05f;
 
+    glm::ivec2 last_raw_mouse_position = glm::ivec2(0);
     std::unordered_set<WPARAM> keys_down_;
-
-    glm::vec3 camera_position_ = glm::vec3(0.0f, 0.0f, -3.0f);
-    glm::vec3 camera_up_dir_ = glm::vec3(0.0f, 1.0f, 0.0f);
-    glm::vec3 camera_front_dir_ = glm::vec3(0.0f, 0.0f, 1.0f);
-    glm::vec3 camera_right_dir_ = glm::vec3(1.0f, 0.0f, 0.0f);
 
     D3D11_VIEWPORT vp_{};
     ComPtr<ID3D11Device> device_;

@@ -69,39 +69,73 @@ void Init_KnownShaders(AppState& app)
     }
 }
 
+Camera::Camera()
+{
+    const float x = cosf(camera_yaw_) * cosf(camera_pitch_);
+    const float y = sinf(camera_pitch_);
+    const float z = sinf(camera_yaw_) * cosf(camera_pitch_);
+
+    camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
+}
+
+void Camera::update(int x_delta, int y_delta)
+{
+    const float d_yaw = glm::radians(float(x_delta) * 0.05f);
+    const float d_pitch = glm::radians(float(y_delta) * 0.05f);
+
+    camera_yaw_ -= d_yaw;
+    camera_pitch_ -= d_pitch;
+    camera_pitch_ = std::clamp(camera_pitch_, glm::radians(-89.0f), glm::radians(89.0f));
+
+    const float x = cosf(camera_yaw_) * cosf(camera_pitch_);
+    const float y = sinf(camera_pitch_);
+    const float z = sinf(camera_yaw_) * cosf(camera_pitch_);
+
+    camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
+}
+
+glm::mat4x4 Camera::view() const
+{
+    return glm::lookAtLH(camera_position_, camera_position_ + camera_front_dir_, camera_up_dir_);
+}
+
+glm::vec3 Camera::right_dir() const
+{
+    return glm::normalize(glm::cross(camera_up_dir_, camera_front_dir_));
+}
+
 // Virtual-Key Codes:
 // https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
 void TickInput(AppState& app)
 {
+    static const float camera_move_XZ_speed_ = 0.1f;
+    static const float camera_move_Y_speed_ = 0.05f;
+    glm::vec3 dp = glm::vec3(0.0f);
     if (app.keys_down_.contains(0x57)) // W
     {
-        app.camera_position_ += (app.camera_front_dir_ * app.camera_move_XZ_speed_);
+        dp = app.camera_.camera_front_dir_ * camera_move_XZ_speed_;
     }
     if (app.keys_down_.contains(0x53)) // S
     {
-        app.camera_position_ -= (app.camera_front_dir_ * app.camera_move_XZ_speed_);
+        dp = -1.0f * app.camera_.camera_front_dir_ * camera_move_XZ_speed_;
     }
     if (app.keys_down_.contains(0x41)) // A
     {
-        app.camera_position_ += (app.camera_right_dir_ * app.camera_move_XZ_speed_);
+        dp = -1.0f * app.camera_.right_dir() * camera_move_XZ_speed_;
     }
     if (app.keys_down_.contains(0x44)) // D
     {
-        app.camera_position_ -= (app.camera_right_dir_ * app.camera_move_XZ_speed_);
+        dp = app.camera_.right_dir() * camera_move_XZ_speed_;
     }
     if (app.keys_down_.contains(0x51)) // Q
     {
-        app.camera_position_ -= (app.camera_up_dir_ * app.camera_move_Y_speed_);
+        dp = -1.0f * app.camera_.camera_up_dir_ * camera_move_Y_speed_;
     }
     if (app.keys_down_.contains(0x45)) // E
     {
-        app.camera_position_ += (app.camera_up_dir_ * app.camera_move_Y_speed_);
+        dp = app.camera_.camera_up_dir_ * camera_move_Y_speed_;
     }
-    if (app.keys_down_.contains(0x4D)) // M
-    {
-        app.imgui_.enable_camera_rotation = !app.imgui_.enable_camera_rotation;
-        app.keys_down_.erase(0x4D);
-    }
+    app.camera_.camera_position_ += dp;
 }
 
 // Handling Window Resizing:
@@ -169,67 +203,51 @@ static void OnWindowMouseInput(AppState& app, HRAWINPUT handle)
     const UINT status = ::GetRawInputData(handle, RID_INPUT, &raw, &size, sizeof(RAWINPUTHEADER));
     Panic(status == size);
     Panic(raw.header.dwType == RIM_TYPEMOUSE);
-    Panic((raw.data.mouse.usFlags & MOUSE_MOVE_RELATIVE) == MOUSE_MOVE_RELATIVE);
-    const LONG x_delta = raw.data.mouse.lLastX;
-    const LONG y_delta = raw.data.mouse.lLastY;
+
+    // https://github.com/libsdl-org/SDL/blob/b45ed98ae936298163c0c85711c78d9ee3f52c27/src/video/windows/SDL_windowsevents.c#L586
+    RAWMOUSE& mouse = raw.data.mouse;
+    /*const*/ int dx = int(mouse.lLastX);
+    /*const*/ int dy = int(mouse.lLastY);
+    const bool is_absolute = ((mouse.usFlags & MOUSE_MOVE_ABSOLUTE) != 0);
+    const bool has_motion = (dx || dy);
+    if (has_motion)
+    {
+        if (is_absolute)
+        {
+            // bool remote_desktop = (GetSystemMetrics(SM_REMOTESESSION) == TRUE);
+            const bool virtual_desktop = ((mouse.usFlags & MOUSE_VIRTUAL_DESKTOP) != 0);
+            const bool raw_coordinates = ((mouse.usFlags & 0x40) != 0);
+            const int w = ::GetSystemMetrics(virtual_desktop ? SM_CXVIRTUALSCREEN : SM_CXSCREEN);
+            const int h = ::GetSystemMetrics(virtual_desktop ? SM_CYVIRTUALSCREEN : SM_CYSCREEN);
+            const int x = (raw_coordinates ? dx : (int)(((float)dx / 65535.0f) * w));
+            const int y = (raw_coordinates ? dy : (int)(((float)dy / 65535.0f) * h));
+            if ((app.last_raw_mouse_position.x == 0) && (app.last_raw_mouse_position.y == 0))
+            {
+                app.last_raw_mouse_position.x = x;
+                app.last_raw_mouse_position.y = y;
+            }
+            dx = (x - app.last_raw_mouse_position.x);
+            dy = (y - app.last_raw_mouse_position.y);
+            app.last_raw_mouse_position = glm::ivec2(x, y);
+        }
+        else
+        {
+            // done, relative
+        }
+    }
 
     if (raw.data.mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_DOWN)
     {
-        app.is_model_rotation_active_ = true;
+        app.update_camera_ = true;
     }
     if (raw.data.mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_UP)
     {
-        app.is_model_rotation_active_ = false;
+        app.update_camera_ = false;
     }
 
-    if (!app.imgui_.enable_model_rotation)
+    if (app.update_camera_)
     {
-        app.is_model_rotation_active_ = false;
-    }
-
-    if (app.is_model_rotation_active_)
-    {
-        // Second approach:
-        // https://stackoverflow.com/questions/28115770/opengl-rotate-an-object-using-the-mouse-c.
-        const glm::vec3 kYUp(0.f, 1.f, 0.f);
-
-        if ((std::abs(x_delta) > 0.f))
-        {
-            // Rotate around Y axis.
-            app.model_rotation_ =
-                glm::rotate(app.model_rotation_, glm::radians(-1.f * x_delta * app.model_rotation_sensitivity_), kYUp);
-        }
-
-        if ((std::abs(y_delta) > 0.f))
-        {
-            // Rotate in view direction plane.
-            auto rotate_axis = glm::cross(app.camera_front_dir_, kYUp);
-            const bool is_valid = !glm::all(glm::lessThan(glm::abs(rotate_axis), glm::vec3(glm::epsilon<float>())));
-            if (is_valid)
-            {
-                app.model_rotation_ = glm::rotate(
-                    app.model_rotation_, glm::radians(1.f * y_delta * app.model_rotation_sensitivity_), rotate_axis
-                );
-            }
-        }
-    }
-
-    if (app.imgui_.enable_camera_rotation && !app.is_model_rotation_active_)
-    {
-        // https://learnopengl.com/Getting-started/Camera.
-        const float d_yaw = glm::radians(float(x_delta) * app.camera_rotation_sensitivity_);
-        const float d_pitch = glm::radians(float(y_delta) * app.camera_rotation_sensitivity_);
-
-        app.camera_yaw_ -= d_yaw;
-        app.camera_pitch_ -= d_pitch;
-        app.camera_pitch_ = std::clamp(app.camera_pitch_, glm::radians(-89.0f), glm::radians(89.0f));
-
-        const float x = cosf(app.camera_yaw_) * cosf(app.camera_pitch_);
-        const float y = sinf(app.camera_pitch_);
-        const float z = sinf(app.camera_yaw_) * cosf(app.camera_pitch_);
-
-        app.camera_front_dir_ = glm::normalize(glm::vec3(x, y, z));
-        app.camera_right_dir_ = glm::normalize(glm::cross(app.camera_front_dir_, app.camera_up_dir_));
+        app.camera_.update(dx, dy);
     }
 }
 

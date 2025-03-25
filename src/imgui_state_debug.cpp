@@ -68,9 +68,6 @@ void ImGui_TweaksInput(ImGuiState& imgui)
     ImGui::SameLine();
     (void)ImGui::Checkbox("Show model", &imgui.show_model);
 
-    (void)ImGui::Checkbox("Mouse movements (press M)", &imgui.enable_camera_rotation);
-    (void)ImGui::Checkbox("Model rotation (with mouse middle button)", &imgui.enable_model_rotation);
-
     imgui.need_change_wireframe = ImGui::Checkbox("Render wireframe", &imgui.wireframe);
     (void)ImGui::Checkbox("Show zero world space (red = x, green = y, blue = z)", &imgui.show_zero_world_space);
     (void)ImGui::Checkbox("Show light cube", &imgui.show_light_cube);
@@ -81,7 +78,7 @@ void ImGui_TweaksInput(ImGuiState& imgui)
     (void)ImGui::ColorEdit3("Light color", (float*)&imgui.light_color, ImGuiColorEditFlags_NoAlpha);
     (void)ImGui::SliderFloat("Model scale", &imgui.model_scale, 0.01f, 8.f);
 
-    (void)ImGui::SliderFloat3("Camera position", (float*)&imgui.app_->camera_position_, -100.f, 100.f);
+    (void)ImGui::SliderFloat3("Camera position", (float*)&imgui.app_->camera_.camera_position_, -100.f, 100.f);
 
     ImGui::Separator();
     (void)ImGui::Checkbox("ImGui Demo", &imgui.show_demo_window);

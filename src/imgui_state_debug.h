@@ -47,8 +47,6 @@ struct ImGuiState
     LightMode light_mode = LightMode::Moving_Active;
     float light_move_radius = 10.f;
     bool show_cube_normals = false;
-    bool enable_camera_rotation = false;
-    bool enable_model_rotation = true;
 
     AppState* app_ = nullptr;
     int selected_model_index_ = 0;
