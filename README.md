@@ -2,7 +2,7 @@
 
  * DirectX 11
  * Drag and drop .OBJ model loading
- * Shaders hot-reload/re-compile
+ * Shaders hot reload/recompile
 
 ![](sample.png)
 
