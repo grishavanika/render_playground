@@ -128,12 +128,7 @@ target_include_directories(win_io INTERFACE
 
 # -----------------------------------------
 
-# libraries
-add_subdirectory(src/model)
 # exe
 add_subdirectory(src/app)
-add_subdirectory(src/export)
-
-# tests
 
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "app")

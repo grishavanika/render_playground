@@ -42,6 +42,6 @@ float4 main_ps(VS_OUTPUT input) : SV_Target
         float4 lit = lerp(c_warn, c_highlight, s);
         out_color.rgb += NdL * Lights[i].LightColor.rgb * lit.rgb;
     }
-
+    // out_color = c_unlit;
     return out_color;
 }

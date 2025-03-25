@@ -43,7 +43,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 	app.watch_ = ShadersWatch(app.compiler_);
 	app.all_shaders_ = Shaders::Build();
 	app.imgui_.app_ = &app;
-	app.files_to_load_.push_back(XX_PACKAGE_FOLDER "dragon.lr.bin");
+	app.files_to_load_.push_back(XX_PACKAGE_FOLDER "dragon/dragon.obj");
 
 	// Accept WM_DROPFILES.
 	::DragAcceptFiles(app.window_.wnd(), TRUE);

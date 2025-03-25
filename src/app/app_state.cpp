@@ -10,16 +10,16 @@
 {
 	const VSShader vs_shaders[] =
 	{
-		{&c_vs_basic_phong},
 		{&c_vs_gooch_shading},
+		{&c_vs_basic_phong},
 		{&c_vs_lines},
 		{&c_vs_vertices_only},
 		{&c_vs_normals},
 	};
 	const PSShader ps_shaders[] =
 	{
-		{&c_ps_basic_phong},
 		{&c_ps_gooch_shading},
+		{&c_ps_basic_phong},
 		{&c_ps_lines},
 		{&c_ps_vertices_only},
 		{&c_ps_normals},
@@ -327,7 +327,7 @@ void Init_MessageHandling(AppState& app)
 		, [&app](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) -> LRESULT
 		{
 			HDROP drop = reinterpret_cast<HDROP>(wparam);
-			struct ScopeEnd { HDROP _drop; ~ScopeEnd() { ImGui::End(); } } _{ drop };
+			struct ScopeEnd { HDROP _drop; ~ScopeEnd() { ::DragFinish(_drop); } } _{ drop };
 			UINT files_count = ::DragQueryFileA(drop, UINT(0xFFFFFFFF), nullptr, 0);
 			Panic(files_count != 0);
 			for (UINT file_index = 0; file_index < files_count; ++file_index)
@@ -406,6 +406,11 @@ static void TryLoadModelsFromPaths(AppState& app, std::vector<std::string> paths
 	std::vector<FileModel> models;
 	for (std::string& f : files)
 	{
+		const std::string ext = std::filesystem::path(f).extension().string();
+		if (ext != ".obj")
+		{
+			continue;
+		}
 		auto maybe_model = LoadModel(f.c_str());
 		if (!maybe_model)
 		{
@@ -418,13 +423,31 @@ static void TryLoadModelsFromPaths(AppState& app, std::vector<std::string> paths
 		fm.model = std::move(maybe_model.value());
 	}
 
-	// #QQQ: need to merge instead - replace
-	// existing models with new one.
+	std::vector<FileModel> old_models = std::move(app.models_);
 	app.models_ = std::move(models);
+	auto has_model = [&](const std::string& file_name)
+	{
+		for (const FileModel& m : app.models_)
+		{
+			if (m.file_name == file_name)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+	for (FileModel& old_model : old_models)
+	{
+		if (!has_model(old_model.file_name))
+		{
+			app.models_.push_back(std::move(old_model));
+		}
+	}
 }
 
 bool TickModelsLoad(AppState& app)
 {
+	bool refresh = false;
 	if (app.files_to_load_.size() > 0)
 	{
 		const bool force_select = (app.files_to_load_.size() == 1)
@@ -445,11 +468,16 @@ bool TickModelsLoad(AppState& app)
 				}
 			}
 		}
+		refresh = true;
+	}
+
+	if (app.imgui_.selected_model_index_ != app.active_model_index_)
+	{
+		refresh = true;
 	}
 
 	// Model's change from the UI/initial change.
-	if ((app.imgui_.selected_model_index_ != app.active_model_index_)
-		&& (std::size_t(app.imgui_.selected_model_index_) < app.models_.size()))
+	if (refresh)
 	{
 		app.active_model_index_ = app.imgui_.selected_model_index_;
 		const Model& model = app.models_[std::size_t(app.imgui_.selected_model_index_)].model;

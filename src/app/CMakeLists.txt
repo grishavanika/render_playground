@@ -55,6 +55,8 @@ set(src_files
     predefined_objects.cpp
     imgui_state_debug.cpp
     app_state.cpp
+    assimp_model.cpp
+    model.cpp
     )
 set(header_files
     stub_window.h
@@ -69,10 +71,14 @@ set(header_files
     dx_api.h
     imgui_state_debug.h
     app_state.h
+    model.h
+    vertex.h
+    utils_outcome.h
+    assimp_model.h
     )
 
 add_executable(${exe_name} WIN32 ${src_files} ${header_files} ${shaders_files})
-target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/_package/\"")
+target_compile_definitions(${exe_name} PRIVATE "XX_PACKAGE_FOLDER=\"${PROJECT_SOURCE_DIR}/assets/\"")
 target_compile_definitions(${exe_name} PRIVATE "XX_SHADERS_FOLDER=\"${PROJECT_SOURCE_DIR}/src/app/shaders/\"")
 
 target_compile_definitions(${exe_name} PRIVATE UNICODE _UNICODE)
@@ -87,9 +93,6 @@ endif()
 
 set_all_warnings(${exe_name} PRIVATE)
 
-# Own dependencies.
-target_link_libraries(${exe_name} model)
-
 # Generated shaders.
 target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -97,5 +100,7 @@ target_include_directories(${exe_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(${exe_name} DX11_Integrated)
 target_link_libraries(${exe_name} ImGui_Integrated)
 target_link_libraries(${exe_name} win_io)
-
-
+target_link_libraries(${exe_name} Assimp_Integrated)
+target_link_libraries(${exe_name} stb_image_Integrated)
+target_link_libraries(${exe_name} outcome)
+target_link_libraries(${exe_name} glm_Interface)
