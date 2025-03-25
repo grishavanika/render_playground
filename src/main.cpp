@@ -209,7 +209,7 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
 		{
 			const Model& m = app.models_[std::size_t(app.active_model_index_)].model;
 			render_bb.clear();
-			render_bb.add_bb(m.aabb_min_, m.aabb_max_, glm::vec3(1.f, 0.f, 0.f));
+			render_bb.add_bb(m.aabb_min(), m.aabb_max(), glm::vec3(1.f, 0.f, 0.f));
 		}
 
 		TickShadersChange(app);

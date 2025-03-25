@@ -9,8 +9,6 @@ namespace fs = std::filesystem;
 
 struct AssimpModel;
 AssimpModel Assimp_Load(fs::path file_path);
-// Temporary: transition from blob/binary format.
-void* Assimp_ToBlob(const char* filename, size_t& size_);
 
 struct AssimpTexture
 {

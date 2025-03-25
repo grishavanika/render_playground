@@ -133,12 +133,12 @@ static ID3D11ShaderResourceView* GetTexture(const RenderModel& model, std::uint3
     hr = device.CreateSamplerState(&sampler_desc, &render.sampler_linear_);
     Panic(SUCCEEDED(hr));
 
-    for (std::uint32_t i = 0; i < model.meshes_count_; ++i)
+    for (std::uint32_t i = 0; i < model.meshes_count(); ++i)
     {
         render.meshes.push_back(RenderMesh::make(
             device, model.get_mesh(i)));
     }
-    for (std::uint32_t i = 0; i < model.textures_count_; ++i)
+    for (std::uint32_t i = 0; i < model.textures_count(); ++i)
     {
         render.textures.push_back(RenderTexture::make(
             device, model.get_texture(i)));

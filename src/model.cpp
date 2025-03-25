@@ -13,132 +13,80 @@ static void Panic(bool condition)
     }
 }
 
-Model::Model(Model&& rhs) noexcept
-    : meshes_count_(rhs.meshes_count_)
-    , textures_count_(rhs.textures_count_)
-    , memory_size_(rhs.memory_size_)
-    , memory_(rhs.memory_)
-    , aabb_min_(rhs.aabb_min_)
-    , aabb_max_(rhs.aabb_max_)
+Model::Model() noexcept = default;
+Model::~Model() noexcept = default;
+Model::Model(Model&&) noexcept = default;
+Model& Model::operator=(Model&&) noexcept = default;
+
+glm::vec3 Model::aabb_min() const
 {
-    rhs.memory_ = nullptr;
-    rhs.memory_size_ = 0;
-    rhs.meshes_count_ = 0;
-    rhs.textures_count_ = 0;
+    Panic(!!assimp_);
+    return assimp_->aabb_min;
 }
 
-Model& Model::operator=(Model&& rhs) noexcept
+glm::vec3 Model::aabb_max() const
 {
-    if (this != &rhs)
-    {
-        this->~Model();
-        new(this) Model(std::move(rhs));
-    }
-    return *this;
+    Panic(!!assimp_);
+    return assimp_->aabb_max;
 }
 
-Model::~Model()
+std::uint32_t Model::meshes_count() const
 {
-    if (memory_)
-    {
-        free((void*)memory_);
-    }
-    memory_ = nullptr;
-    memory_size_ = 0;
-    meshes_count_ = 0;
-    textures_count_ = 0;
+    Panic(!!assimp_);
+    return std::uint32_t(assimp_->meshes.size());
+}
+
+std::uint32_t Model::textures_count() const
+{
+    Panic(!!assimp_);
+    return std::uint32_t(assimp_->materials.size());
 }
 
 Mesh Model::get_mesh(std::uint32_t index) const
 {
-    Panic(!!memory_);
-    Panic(index < meshes_count_);
-    // UB everywhere.
+    Panic(!!assimp_);
+    Panic(index < assimp_->meshes.size());
+    const AssimpMesh& assimp_mesh = assimp_->meshes[index];
 
-    const std::uint32_t offset = sizeof(Header);
-    Panic(memory_size_ > offset);
-
-    const std::span<const MeshData> meshes(
-        reinterpret_cast<const MeshData*>(memory_ + offset)
-        , meshes_count_);
-    const MeshData& mesh_data = meshes[index];
-
-    Panic(memory_size_ >= mesh_data.vertices_start);
-    Panic(memory_size_ >= mesh_data.vertices_end);
-    Panic(memory_size_ >= mesh_data.indices_start);
-    Panic(memory_size_ >= mesh_data.indices_end);
-
-    const std::span<const Vertex> vertices(
-        reinterpret_cast<const Vertex*>(memory_ + mesh_data.vertices_start)
-        , (mesh_data.vertices_end - mesh_data.vertices_start) / sizeof(Vertex));
-    const std::span<const Index> indices(
-        reinterpret_cast<const Index*>(memory_ + mesh_data.indices_start)
-        , (mesh_data.indices_end - mesh_data.indices_start) / sizeof(Index));
+    auto get_texture_id = [&](const std::string& path)
+    {
+        for (std::uint32_t i = 0, count = std::uint32_t(assimp_->materials.size()); i < count; ++i)
+        {
+            if (assimp_->materials[i].path == path)
+            {
+                return i;
+            }
+        }
+        return std::uint32_t(-1);
+    };
 
     Mesh mesh{};
-    mesh.vertices = vertices;
-    mesh.indices = indices;
-    mesh.texture_diffuse_id = mesh_data.texture_diffuse_id;
-    mesh.texture_normal_id = mesh_data.texture_normal_id;
+    mesh.vertices = assimp_mesh.vertices;
+    mesh.indices = assimp_mesh.indices;
+    mesh.texture_diffuse_id = get_texture_id(assimp_mesh.texture_diffuse.path);
+    mesh.texture_normal_id = get_texture_id(assimp_mesh.texture_normal.path);
     return mesh;
 }
 
 Texture Model::get_texture(std::uint32_t index) const
 {
-    Panic(!!memory_);
-    Panic(index < textures_count_);
-    // UB everywhere.
+    Panic(!!assimp_);
+    const AssimpModel::Blob& assimp_texture = assimp_->materials[index];
 
-    const std::uint32_t offset = 0
-        + sizeof(Header)
-        + (sizeof(MeshData) * meshes_count_);
-    Panic(memory_size_ > offset);
-
-    const std::span<const TextureData> textures(
-        reinterpret_cast<const TextureData*>(memory_ + offset)
-        , textures_count_);
-    const TextureData& mesh_data = textures[index];
-
-    const std::span<const std::uint8_t> data(
-        reinterpret_cast<const std::uint8_t*>(memory_ + mesh_data.start)
-        , (mesh_data.end - mesh_data.start) / sizeof(std::uint8_t));
-
+    const std::size_t size = assimp_texture.height * assimp_texture.width * c_texture_channels;
     Texture texture{};
-    texture.id = mesh_data.texture_id;
-    texture.height = mesh_data.height;
-    texture.width = mesh_data.width;
-    texture.data = data;
+    texture.id = index;
+    texture.height = assimp_texture.height;
+    texture.width = assimp_texture.width;
+    texture.data = { assimp_texture.data, assimp_texture.data + size };
     return texture;
 }
 
 outcome::result<Model> LoadModel(const char* filename)
 {
-    size_t size = 0;
-    void* data = Assimp_ToBlob(filename, size);
-
-    std::uint32_t needed_size = sizeof(Header);
-    if (size <= needed_size) return outcome::failure(todo::not_implemented);
-    const Header* header = static_cast<const Header*>(data);
-    if (header->version_id != Header::k_current_version) return outcome::failure(todo::not_implemented);
-    if (header->meshes_count == 0) return outcome::failure(todo::not_implemented);
-    if ((header->capabilitis & std::uint16_t(Capabilities::TextureCoords))
-        && (header->textures_count == 0))
-    {
-        return outcome::failure(todo::not_implemented);
-    }
-
-    needed_size += std::uint32_t(sizeof(MeshData) * header->meshes_count);
-    if (size <= needed_size) return outcome::failure(todo::not_implemented);
-    needed_size += std::uint32_t(sizeof(TextureData) * header->textures_count);
-    if (size <= needed_size) return outcome::failure(todo::not_implemented);
-
-    const std::uint8_t* start = static_cast<const std::uint8_t*>(data);
+    AssimpModel model = Assimp_Load(filename);
+    Panic(!model.meshes.empty());
     Model m{};
-    m.aabb_min_ = header->aabb_min;
-    m.aabb_max_ = header->aabb_max;
-    m.memory_ = start;
-    m.meshes_count_ = header->meshes_count;
-    m.textures_count_ = header->textures_count;
-    m.memory_size_ = std::uint32_t(size);
+    m.assimp_ = std::make_unique<AssimpModel>(std::move(model));
     return outcome::success(std::move(m));
 }
