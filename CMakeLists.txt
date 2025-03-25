@@ -129,6 +129,6 @@ target_include_directories(win_io INTERFACE
 # -----------------------------------------
 
 # exe
-add_subdirectory(src/app)
+add_subdirectory(src)
 
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "app")
