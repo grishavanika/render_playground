@@ -57,7 +57,7 @@ struct PSShader
     ComPtr<ID3D11PixelShader> ps;
 };
 
-static void PanicShadersValid(const VSShader* vs_shader, const PSShader* ps_shader)
+inline void PanicShadersValid(const VSShader* vs_shader, const PSShader* ps_shader)
 {
     Panic(!!vs_shader);
     Panic(!!vs_shader->vs_layout);

@@ -9,18 +9,18 @@
 /*static*/ Shaders Shaders::Build()
 {
     const VSShader vs_shaders[] = {
-        {&c_vs_gooch_shading},
-        {&c_vs_basic_phong},
-        {&c_vs_lines},
-        {&c_vs_vertices_only},
-        {&c_vs_normals},
+        {&c_vs_gooch_shading, {}, {}},
+        {&c_vs_basic_phong, {}, {}},
+        {&c_vs_lines, {}, {}},
+        {&c_vs_vertices_only, {}, {}},
+        {&c_vs_normals, {}, {}},
     };
     const PSShader ps_shaders[] = {
-        {&c_ps_gooch_shading},
-        {&c_ps_basic_phong},
-        {&c_ps_lines},
-        {&c_ps_vertices_only},
-        {&c_ps_normals},
+        {&c_ps_gooch_shading, {}},
+        {&c_ps_basic_phong, {}},
+        {&c_ps_lines, {}},
+        {&c_ps_vertices_only, {}},
+        {&c_ps_normals, {}},
     };
 
     Shaders all;
@@ -219,8 +219,8 @@ static void OnWindowMouseInput(AppState& app, HRAWINPUT handle)
             const bool raw_coordinates = ((mouse.usFlags & 0x40) != 0);
             const int w = ::GetSystemMetrics(virtual_desktop ? SM_CXVIRTUALSCREEN : SM_CXSCREEN);
             const int h = ::GetSystemMetrics(virtual_desktop ? SM_CYVIRTUALSCREEN : SM_CYSCREEN);
-            const int x = (raw_coordinates ? dx : (int)(((float)dx / 65535.0f) * w));
-            const int y = (raw_coordinates ? dy : (int)(((float)dy / 65535.0f) * h));
+            const int x = (raw_coordinates ? dx : int((float(dx) / 65535.0f) * float(w)));
+            const int y = (raw_coordinates ? dy : int((float(dy) / 65535.0f) * float(h)));
             if ((app.last_raw_mouse_position.x == 0) && (app.last_raw_mouse_position.y == 0))
             {
                 app.last_raw_mouse_position.x = x;

@@ -224,7 +224,7 @@ std::vector<ShaderPatch> ShadersWatch::collect_changes(ID3D11Device& device)
         }
         Directory& dir = *dirs_[std::size_t(data->completion_key)];
         wi::DirectoryChangesRange changes(dir.buffer, *data);
-        for (const wi::DirectoryChange& file_change : changes)
+        for (wi::DirectoryChange file_change : changes)
         {
             for (const FileShadersDeps& deps : dir.files)
             {
@@ -239,7 +239,6 @@ std::vector<ShaderPatch> ShadersWatch::collect_changes(ID3D11Device& device)
         Panic(!ec);
     }
 
-    int count = 0;
     std::sort(shaders.begin(), shaders.end(), [](const ShaderState& lhs, const ShaderState& rhs) {
         return (lhs.info_ < rhs.info_);
     });
@@ -271,7 +270,6 @@ std::vector<ShaderPatch> ShadersWatch::collect_changes(ID3D11Device& device)
             break;
         }
         }
-        ++count;
         add_newest_patch(std::move(patch));
     }
     return patches;

@@ -42,7 +42,6 @@ static AssimpMesh Assimp_ProcessMesh(const aiScene& scene, const aiMesh& mesh)
     mesh_data.has_texture_coords = [&]() {
         // #QQQ: clean-up - better names and document the logic behind this.
         const bool has_uv = mesh.mTangents                                 // valid tangents
-                            && mesh.mTextureCoords                         // and texture coords
                             && mesh.mTextureCoords[0]                      // ... one per vertex
                             && (mesh.mNumUVComponents[0] == 2)             // that has only x and y.
                             && (mesh.mMaterialIndex < scene.mNumMaterials) //

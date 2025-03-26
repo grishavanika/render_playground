@@ -18,7 +18,6 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
-#define NOMINMAX
 #include <Windows.h>
 #include <tchar.h>
 #include <windowsx.h>
@@ -248,6 +247,8 @@ int WINAPI _tWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPTST
         case LightMode::Static_AtCameraPosition:
             app.active_model_.light_position = app.camera_.camera_position_;
             break;
+        //default: // clang missbehaves
+        //    break;
         }
 
         if (app.imgui_.check_wireframe_change())

@@ -126,6 +126,12 @@ add_library(win_io INTERFACE)
 target_include_directories(win_io INTERFACE
     "${win_io_SOURCE_DIR}/src/win_io/include/win_io")
 
+if (clang_on_msvc)
+    target_compile_options(win_io INTERFACE
+        -Wno-nested-anon-types
+        -Wno-switch-default
+        -Wno-unsafe-buffer-usage)
+endif()
 # -----------------------------------------
 
 # exe
